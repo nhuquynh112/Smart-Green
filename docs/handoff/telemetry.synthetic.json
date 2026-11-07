@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "build_stage": "contract_test",
+  "device_id": "SIM-ONLY",
+  "boot_id": "fixture-20261106",
+  "sample_seq": 1,
+  "timestamp": "2026-11-06T05:00:00Z",
+  "uptime_ms": 60000,
+  "data_origin": "synthetic",
+  "calibration_id": "SIM-v1",
+  "soil_raw": 2300,
+  "soil_pct": 38.5,
+  "soil_valid": true,
+  "air_valid": true,
+  "temperature_c": 28.0,
+  "humidity_pct": 67.0,
+  "light_raw": 2000,
+  "light_lux": null,
+  "tank_ok": true,
+  "pump_on": false,
+  "mode": "OFF"
+}

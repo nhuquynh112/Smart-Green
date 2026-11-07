@@ -172,15 +172,29 @@ Các lệnh Serial của bản `bringup`:
 
 ### 3. Xử lý log Serial
 
-Script hiện tại đọc file `device-monitor-*.log` mới nhất trong `firmware/logs/`, bỏ qua dòng không phân tích được thành JSON và xuất các bản ghi có trường `soil_raw`:
+Parser dùng chung bộ kiểm tra với `tools/prepare_telemetry.py`. Chạy từ thư mục gốc để xử lý log mới nhất:
 
 ```bash
-cd firmware
-python tool/parse_logs.py
-cd ..
+python3 firmware/tool/parse_logs.py
 ```
 
-Kết quả được ghi tại `firmware/data/bench_clean.csv`. Script này **chưa kiểm tra đầy đủ dữ liệu thiếu, kiểu dữ liệu và bản ghi trùng**; đây là hạng mục cần hoàn thiện trước khi nhập database hoặc huấn luyện.
+Hoặc truyền nhiều file theo thứ tự thu để loại trùng giữa các file:
+
+```bash
+python3 firmware/tool/parse_logs.py firmware/logs/*.log --output firmware/data/prepared/bench_clean.csv
+```
+
+Đầu ra gồm CSV sạch, báo cáo `.quality.json` và CSV `.postgres.csv` để bàn giao nhập database. Parser kiểm tra trường bắt buộc, kiểu dữ liệu, phạm vi ADC/phần trăm, cờ hợp lệ và thời gian có múi giờ. Bản ghi trùng được nhận diện bằng `device_id + boot_id + sample_seq`; nếu nội dung xung đột, giữ bản đầu và báo lỗi để rà soát. Dữ liệu thiếu thời gian không được tự gán giờ hiện tại.
+
+Thu mẫu mới kèm thời gian nhận UTC (đóng Serial Monitor trước):
+
+```bash
+python -m pip install -e '.[capture]'
+python tools/capture_serial.py /dev/ttyUSB0 --seconds 60 --output firmware/data/session01.jsonl
+python3 firmware/tool/parse_logs.py firmware/data/session01.jsonl --output firmware/data/prepared/session01.csv
+```
+
+Bỏ `--seconds 60` để thu liên tục, dừng bằng `Ctrl+C`. Logger chỉ đọc Serial, không gửi lệnh tưới. Xem [quy trình thu và kiểm tra dữ liệu](docs/TV1_DATA_COLLECTION.md).
 
 Telemetry có các trường định danh `device_id`, `boot_id`, `sample_seq`, thời gian hoạt động `uptime_ms`, dữ liệu cảm biến và trạng thái bơm. Bản bench chưa có thời gian UTC từ thiết bị (`timestamp = null`); cần quản lý thời gian nhận dữ liệu và các lần khởi động khi xây dựng chuỗi thời gian.
 
@@ -232,6 +246,7 @@ Firmware runtime đã có mã cho nhiều cơ chế trên, nhưng còn cần ngh
 - [Hiệu chuẩn và thu thập dữ liệu thực](docs/CALIBRATION_AND_REAL_DATA.md)
 - [Thiết kế dữ liệu và AI](docs/DATA_AND_AI.md)
 - [Hướng dẫn chạy pipeline AI](docs/TV1_AI_RUNBOOK.md)
+- [Kết quả AI giả lập ngày 07/11/2026](docs/AI_OFFLINE_RESULTS_2026-11-07.md)
 - [Kế hoạch triển khai TV1](docs/TV1_PLAN.md)
 - [Nguồn tham khảo](docs/REFERENCES.md)
 
