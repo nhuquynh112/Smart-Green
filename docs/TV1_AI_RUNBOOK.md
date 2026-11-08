@@ -56,3 +56,7 @@ MAE dùng đơn vị **điểm phần trăm của chỉ số ẩm tương đối
 5. Chạy assess, huấn luyện và đánh giá trên dữ liệu thật. AI chỉ đưa đề xuất; ESP32 kiểm tra điều kiện an toàn trước khi tưới.
 
 Backend/PostgreSQL/Web do TV2 phụ trách. Phần pipeline AI này không cần tạo thêm container hay thay schema backend.
+
+## Cập nhật v2 ngày 08/11/2026
+
+Dùng [demo và kết quả mới nhất](OFFLINE_COMPLETION_2026-11-08.md). Các kết quả và model 06–07/11 là bằng chứng lịch sử v1; không tải bằng inference v2. Dữ liệu tưới tay được xử lý bằng [nhật ký và builder](WATERING_AND_AI_DATASET.md), không giả thời gian chạy bơm.

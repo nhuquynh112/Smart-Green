@@ -9,7 +9,7 @@ def test_bench_does_not_invent_timestamps_or_water():
     before=raw.copy(deep=True)
     report=assess(raw)
     assert not report['training_pipeline_ready']
-    assert 'water_total_ms' in report['missing_columns']
+    assert 'water_event_count' in report['missing_columns']
     assert len(report['next_actions'])==3
     pd.testing.assert_frame_equal(raw,before)
 

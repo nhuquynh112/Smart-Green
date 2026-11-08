@@ -83,6 +83,7 @@ def export(run_dir,output):
 <title>Smart-Green — báo cáo AI</title><style>body{{font:16px/1.6 system-ui,sans-serif;max-width:1100px;margin:32px auto;padding:0 20px;color:#17212b}}h1,h2{{line-height:1.3}}.notice{{background:#fff1d6;border-left:5px solid #b45309;padding:16px}}img{{width:100%;height:auto}}table{{border-collapse:collapse;width:100%}}td,th{{border-bottom:1px solid #cbd5e1;padding:10px;text-align:left}}code{{overflow-wrap:anywhere}}@media print{{body{{margin:0}}img{{break-inside:avoid}}}}</style>
 <h1>Smart-Green · Đánh giá dự báo {meta['horizon_minutes']} phút</h1><p class="notice">{provenance}</p>
 <p>Chọn theo validation: <strong>{selected}</strong>. MAE tính bằng điểm phần trăm của chỉ số độ ẩm tương đối; không phải % accuracy. Chưa cho phép tự động kích bơm.</p>
+<p>Cơ sở thời gian: <strong>{html.escape(meta["quality"].get("time_basis", "device_timestamp"))}</strong>. received_at_proxy là giờ nhận thay thế, không phải giờ đo của thiết bị.</p>
 <h2>So sánh mô hình</h2><table><tr><th>Phương án</th><th>Validation MAE</th><th>Test MAE</th><th>Được chọn</th></tr>{table}</table>
 <img alt="Biểu đồ so sánh MAE validation và test" src="{embed('mae.png')}">
 <h2>Dự đoán và giá trị đích</h2><img alt="Đường dự đoán và giá trị đích theo thời gian UTC" src="{embed('forecast.png')}">

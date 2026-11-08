@@ -33,7 +33,7 @@ Có fixture `tests/fixtures/calibration_synthetic.json` để thử phần mềm
 
 4. Kiểm tra soil_pct khác null sau hiệu chuẩn, air_valid=true, received_at có timezone; ghi lại boot/reset và khoảng thiếu. `timestamp` trong bringup vẫn null. Giờ nhận laptop phải được giữ riêng; bước chuẩn hóa thời gian cho AI cần chốt theo phiên thu, không tự coi đó là giờ đo.
 5. Ghi mọi lần tưới bằng nhật ký: timestamp có timezone, calibration_id, method (hand/pump), ml đo được nếu biết, thời gian chạy bơm thực tế nếu dùng bơm, ghi chú. Không biết thì null, không điền 0.
-6. Nếu tưới tay, pipeline AI hiện dùng water_total_ms chưa nhận trực tiếp dữ liệu này. Giữ sự kiện tưới tay để sau đó bổ sung cách tạo đặc trưng phù hợp; không giả thời gian chạy bơm. Raw vẫn có giá trị và không cần đợi bơm mới thu.
+6. Với tưới tay, dùng [nhật ký tưới và builder AI v2](WATERING_AND_AI_DATASET.md). Bộ đếm sự kiện thay thời gian bơm để lọc cửa sổ; không giả actual_ms. Chỉ xác nhận lịch sử đầy đủ sau khi đối chiếu phiên quan sát.
 7. Thu qua nhiều chu kỳ khô–tưới, không ấn định một số ngày là chắc chắn đủ. Chưa dùng 13/25 mẫu bench hay fixture synthetic như dataset nghiệm thu.
 
 Nếu thiết bị nóng bất thường, dừng và kiểm tra nguồn/mạch. DHT22 không đo nhiệt độ chip ESP32.

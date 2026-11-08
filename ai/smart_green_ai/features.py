@@ -3,11 +3,11 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-FEATURE_VERSION = "v1-no-additional-irrigation"
+FEATURE_VERSION = "v2-watering-events"
 FEATURES = ["soil_pct", "soil_lag_5", "soil_lag_15", "slope_15",
             "temperature_c", "humidity_pct", "minutes_since_water", "hour_sin", "hour_cos"]
 REQUIRED = ["timestamp", "device_id", "calibration_id", "data_origin", "soil_pct",
-            "temperature_c", "humidity_pct", "minutes_since_water", "water_total_ms"]
+            "temperature_c", "humidity_pct", "minutes_since_water", "water_event_count"]
 
 
 def validate(raw: pd.DataFrame) -> pd.DataFrame:
@@ -22,6 +22,9 @@ def validate(raw: pd.DataFrame) -> pd.DataFrame:
             raise ValueError(f"Use one non-null {key} per dataset")
     if df.data_origin.iloc[0] not in {"real", "synthetic"}:
         raise ValueError("data_origin must be real or synthetic")
+    basis = df.get('time_basis', pd.Series('device_timestamp', index=df.index))
+    if basis.isna().any() or basis.nunique() != 1 or basis.iloc[0] not in {'device_timestamp', 'received_at_proxy', 'synthetic'}:
+        raise ValueError('Use one supported time_basis per dataset')
     # Reject naive timestamps instead of silently guessing the user's timezone.
     timestamps = [pd.Timestamp(value) for value in df.timestamp]
     if any(pd.isna(t) or t.tzinfo is None for t in timestamps):
@@ -38,12 +41,14 @@ def validate(raw: pd.DataFrame) -> pd.DataFrame:
             raise ValueError(f"Infinite values in {column}")
     for column, low, high in [("soil_pct", 0, 100), ("humidity_pct", 0, 100),
                               ("temperature_c", -40, 85), ("minutes_since_water", 0, np.inf),
-                              ("water_total_ms", 0, np.inf)]:
+                              ("water_event_count", 0, np.inf)]:
         values = df[column].dropna()
         if ((values < low) | (values > high)).any():
             raise ValueError(f"Out-of-range {column}")
-    if (df.water_total_ms.dropna().diff().dropna() < 0).any():
-        raise ValueError("water_total_ms reset; split the recording into separate sessions")
+    if (df.water_event_count.dropna() % 1 != 0).any():
+        raise ValueError('water_event_count must contain integer counts')
+    if (df.water_event_count.dropna().diff().dropna() < 0).any():
+        raise ValueError("water_event_count reset; split the recording into separate sessions")
     # Missing minutes stay missing. Never interpolate over a watering event or outage.
     return df.reindex(pd.date_range(df.index.min(), df.index.max(), freq="min", name="timestamp"))
 
@@ -59,7 +64,7 @@ def feature_frame(grid: pd.DataFrame) -> pd.DataFrame:
     complete = grid[REQUIRED[4:]].notna().all(axis=1)
     history_ok = complete.rolling(16, min_periods=16).sum().eq(16)
     # Do not extrapolate the sharp wetting transient with a dry-down model.
-    dry_history = grid.water_total_ms.eq(grid.water_total_ms.shift(15))
+    dry_history = grid.water_event_count.eq(grid.water_event_count.shift(15))
     return f[FEATURES].where(history_ok & dry_history, np.nan)
 
 
@@ -70,16 +75,17 @@ def supervised(raw: pd.DataFrame, horizon: int = 30) -> tuple[pd.DataFrame, dict
     f = feature_frame(grid)
     complete = grid[REQUIRED[4:]].notna().all(axis=1)
     future_complete = complete.rolling(horizon+1, min_periods=horizon+1).sum().shift(-horizon).eq(horizon+1)
-    no_future_water = grid.water_total_ms.eq(grid.water_total_ms.shift(-horizon))
+    no_future_water = grid.water_event_count.eq(grid.water_event_count.shift(-horizon))
     f["target"] = grid.soil_pct.shift(-horizon)
     f["label_time"] = grid.index + pd.Timedelta(minutes=horizon)
     rows = f.loc[future_complete & no_future_water].dropna()
     info = {
         "input_rows": len(raw), "grid_minutes": len(grid), "usable_windows": len(rows),
         "missing_minutes": int(grid.device_id.isna().sum()),
-        "watering_counter_increments": int((grid.water_total_ms.diff() > 0).sum()),
+        "watering_counter_increments": int((grid.water_event_count.dropna().diff() > 0).sum()),
         "device_id": str(raw.device_id.iloc[0]), "calibration_id": str(raw.calibration_id.iloc[0]),
         "data_origin": str(raw.data_origin.iloc[0]),
+        "time_basis": str(raw.time_basis.iloc[0]) if "time_basis" in raw else "device_timestamp",
         "scope": "Only complete dry history and futures with no additional watering",
     }
     return rows, info

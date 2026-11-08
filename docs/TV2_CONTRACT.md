@@ -58,7 +58,7 @@ Mất clock: không nhận lệnh bật. Mất mạng: core AUTO tiếp tục n�
 
 `POST /api/v1/devices/{device_id}/events`: gồm event_id, command_seq (0 nếu rule), started_at, planned_ms, actual_ms, source, reason. `(device_id,event_id)` duy nhất; nếu xóa NVS/đổi thiết bị phải tạo identity mới để không trùng. Server trả ACK id sau ghi bền; firmware gọi `acknowledgeEvent(id)` đúng thứ tự. `reason=Reboot` phải chuyển actual duration thành unknown/null khi xuất dữ liệu, không tự suy ra lượng nước.
 
-TV2 tạo CSV AI từ telemetry **và** lịch sử tưới hoàn chỉnh. `water_total_ms` là bộ đếm cộng dồn thời gian bơm đã thực hiện, không phải quota dự trù và không reset hằng ngày. Nếu có sự kiện không rõ thời gian, đánh dấu khoảng không hợp lệ; không tạo số 0 giả. Đến khi adapter đầy đủ, sử dụng synthetic fixture để thử backend, gắn nhãn rõ.
+TV2 tạo CSV AI v2 từ telemetry **và** lịch sử tưới hoàn chỉnh. Cột bắt buộc `water_event_count` đếm tưới tay/bơm theo phiên; xem [tích hợp AI v2](handoff/AI_INTEGRATION.md). `water_total_ms` nếu lưu riêng cho vận hành là bộ đếm cộng dồn thời gian bơm đã thực hiện, không phải quota dự trù và không reset hằng ngày. Nếu có sự kiện không rõ thời gian, đánh dấu khoảng không hợp lệ; không tạo số 0 giả. Đến khi adapter đầy đủ, sử dụng synthetic fixture để thử backend, gắn nhãn rõ.
 
 ## Giao diện AI trong Python
 
@@ -81,3 +81,7 @@ advice = predict(trusted_bundle, recent_minute_dataframe, now="2026-11-05T02:01:
 - Mất mạng: telemetry có thể thiếu do queue hữu hạn, event lưu bền tối đa 32. Không nội suy giả thời gian tưới khi reason=Reboot.
 
 Xem TV1_RUNTIME.md để biết cấu hình, giới hạn và trạng thái nghiệm thu.
+
+## AI v2 — 08/11/2026
+
+`feature_version=v2-watering-events`; huấn luyện lại model v1. Hàm predict chỉ nhận phút hoàn tất, trả thêm available_at và time_basis. Model/data phải cùng time_basis. Nhật ký tưới tay không có thời gian bơm giả; khoảng tưới không rõ phải bị loại. Giao thức command/telemetry của ESP32 không thay đổi bởi cập nhật dataset AI này.

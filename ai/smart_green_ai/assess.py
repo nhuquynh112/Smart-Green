@@ -27,8 +27,10 @@ def assess(raw: pd.DataFrame, horizon: int = 30) -> dict:
         report['next_actions'].append('Collect timezone-aware measurement timestamps; received_at remains separate. Do not backfill historical measurement time with current time.')
     if 'soil_pct' not in raw or raw.soil_pct.isna().any():
         report['next_actions'].append('Calibrate soil using real dry/wet reference soil and collect valid soil_pct with a stable calibration_id.')
-    if any(k not in raw or raw[k].isna().any() for k in ('minutes_since_water', 'water_total_ms')):
-        report['next_actions'].append('Collect complete watering events to derive cumulative actual pump time and minutes since watering. Unknown stays missing, not zero.')
+    if any(k not in raw or raw[k].isna().any() for k in ('minutes_since_water', 'water_event_count')):
+        report['next_actions'].append('Collect complete watering events to derive cumulative event counts and minutes since watering. Unknown stays missing, not zero.')
+    if 'time_basis' in raw and 'received_at_proxy' in raw.time_basis.values:
+        report['warnings'].append('Explicit reception-time proxy: evaluate clock/latency before real-world claims; not device measurement time.')
     if 'received_at' in raw:
         report['warnings'].append('Laptop received_at is not automatically substituted for device timestamp.')
     if report['blockers']:

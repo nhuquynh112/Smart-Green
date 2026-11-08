@@ -247,7 +247,26 @@ Firmware runtime đã có mã cho nhiều cơ chế trên, nhưng còn cần ngh
 - [Thiết kế dữ liệu và AI](docs/DATA_AND_AI.md)
 - [Hướng dẫn chạy pipeline AI](docs/TV1_AI_RUNBOOK.md)
 - [Kết quả AI giả lập ngày 07/11/2026](docs/AI_OFFLINE_RESULTS_2026-11-07.md)
+- [Hoàn thiện offline ngày 08/11/2026](docs/OFFLINE_COMPLETION_2026-11-08.md)
+- [Nhật ký tưới và CSV AI v2](docs/WATERING_AND_AI_DATASET.md)
+- [Tích hợp AI cho TV2](docs/handoff/AI_INTEGRATION.md)
+- [Kịch bản nghiệm thu trên mạch](docs/TV1_HARDWARE_ACCEPTANCE.md)
+- [Bản nháp báo cáo TV1](docs/TV1_REPORT_DRAFT.md)
 - [Kế hoạch triển khai TV1](docs/TV1_PLAN.md)
 - [Nguồn tham khảo](docs/REFERENCES.md)
 
 Các tài liệu chi tiết có thể ghi nhận tiến độ ở thời điểm trước; mốc tổng quan của README này là **07/11/2026**.
+
+
+## Làm việc offline không cần ESP32 — cập nhật 08/11/2026
+
+Pipeline AI v2 nhận sự kiện tưới tay/bơm qua nhật ký, tạo lưới phút đã hoàn tất và giữ rõ nguồn thời gian. Model v1 cần huấn luyện lại. Công cụ không điều khiển thiết bị.
+
+Chạy toàn bộ demo bằng dữ liệu giả lập trong một thư mục mới:
+
+```bash
+python -m pip install -e '.[test,report]'
+python tools/demo_offline.py --days 10 --output artifacts/offline-demo-v2
+```
+
+Đầu ra gồm telemetry synthetic, nhật ký tưới synthetic, CSV phút, báo cáo chất lượng, model, đề xuất mẫu và `report/index.html`. Thư mục đích phải chưa tồn tại để không ghi đè bằng chứng. Kết quả không đại diện cho cây thật.

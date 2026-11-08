@@ -63,3 +63,9 @@ Gửi telemetry hai lần phải chỉ có một identity; không tạo command 
 PostgreSQL mới có script staging `db/import_bench.sql`, chưa dựng/chạy database. Backend/Web/DB production do TV2 phụ trách; cần thống nhất trước khi triển khai thêm container.
 
 Kết quả và lệnh tạo lại báo cáo: [AI offline 07/11](../AI_OFFLINE_RESULTS_2026-11-07.md). Quy trình dữ liệu mới: [thu và kiểm tra telemetry](../TV1_DATA_COLLECTION.md).
+
+## Bổ sung offline ngày 08/11/2026
+
+- [Tích hợp AI v2](AI_INTEGRATION.md): schema CSV và hàm predict.
+- [Nhật ký tưới / builder](../WATERING_AND_AI_DATASET.md): hỗ trợ tưới tay không giả thời gian bơm.
+- [Nghiệm thu phần cứng](../TV1_HARDWARE_ACCEPTANCE.md): các ca còn cần thử thực tế.

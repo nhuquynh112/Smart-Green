@@ -13,7 +13,7 @@ def test_future_irrigation_and_purge():
     rows, _=supervised(raw)
     grid=validate(raw)
     for t in rows.index:
-        assert grid.loc[t,"water_total_ms"]==grid.loc[t+pd.Timedelta(minutes=30),"water_total_ms"]
+        assert grid.loc[t,"water_event_count"]==grid.loc[t+pd.Timedelta(minutes=30),"water_event_count"]
     fit,val,test=chronological_split(rows)
     assert fit.label_time.max()<val.index.min()
     assert val.label_time.max()<test.index.min()
@@ -43,7 +43,7 @@ def test_invalid_input(fault):
     if fault=="naive":raw.loc[0,"timestamp"]="2026-01-01 00:00:00"
     if fault=="mixed":raw.loc[1,"calibration_id"]="other"
     if fault=="range":raw.loc[1,"soil_pct"]=101
-    if fault=="counter":raw.loc[0,"water_total_ms"]=99999
+    if fault=="counter":raw.loc[0,"water_event_count"]=99999
     if fault=="infinite":raw.loc[0,"soil_pct"]=np.inf
     with pytest.raises(ValueError):validate(raw)
 
@@ -55,7 +55,7 @@ def test_round_trip_and_no_auto_promotion(tmp_path):
     assert report["quality"]["data_origin"]=="synthetic"
     assert not report["automatic_irrigation_approved"]
     bundle=joblib.load(tmp_path/"out/candidate.joblib")
-    now=raw.timestamp.iloc[-1]
+    now=(pd.Timestamp(raw.timestamp.iloc[-1])+pd.Timedelta(minutes=1)).isoformat()
     advice=predict(bundle,raw,now)
     assert not advice["can_trigger_pump"]
     assert 0<=advice["predicted_soil_pct"]<=100
@@ -86,3 +86,26 @@ def test_falling_soil_report_matches_exported_predictions(tmp_path):
             assert value==pytest.approx(np.abs(exported.loc[mask,'target']-exported.loc[mask,name]).mean())
         else:
             assert value is None
+
+
+def test_inference_rejects_old_bundle_time_basis_mismatch_and_open_minute(tmp_path):
+    raw=generate(1)
+    csv=tmp_path/'input.csv';raw.to_csv(csv,index=False)
+    train(csv,tmp_path/'model')
+    bundle=joblib.load(tmp_path/'model/candidate.joblib')
+    now=(pd.Timestamp(raw.timestamp.iloc[-1])+pd.Timedelta(minutes=1)).isoformat()
+    with pytest.raises(ValueError,match='incomplete'):
+        predict(bundle,raw,raw.timestamp.iloc[-1])
+    proxy=raw.copy();proxy['time_basis']='received_at_proxy'
+    with pytest.raises(ValueError,match='time_basis'):
+        predict(bundle,proxy,now)
+    bundle['metadata']['feature_version']='v1-no-additional-irrigation'
+    with pytest.raises(ValueError,match='version'):
+        predict(bundle,raw,now)
+
+
+def test_fractional_event_counts_rejected():
+    raw=generate(1);raw['water_event_count']=raw.water_event_count.astype(float)
+    raw.loc[0,'water_event_count']=0.5
+    with pytest.raises(ValueError,match='integer'):
+        validate(raw)

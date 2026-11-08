@@ -48,7 +48,7 @@ Cùng `device_id + boot_id + sample_seq` và cùng payload (bỏ qua `received_a
 - `received_at` có múi giờ; xem xét các dòng bị từ chối và khoảng mất mẫu.
 - Giữ nhật ký tưới tay: thời gian có múi giờ, device/calibration ID, lượng nước ml nếu đo được và ghi chú. Không biết lượng nước thì để null.
 - Ghi lại mọi lần di chuyển cảm biến, thay đất, đổi chậu hoặc reset thiết bị.
-- Thu qua nhiều chu kỳ khô–tưới. AI hiện chưa dùng trực tiếp lượng nước tưới tay; không quy đổi thành thời gian bơm giả.
+- Thu qua nhiều chu kỳ khô–tưới. AI v2 dùng nhật ký sự kiện tưới tay để lọc cửa sổ; lượng nước chưa là đặc trưng và không quy đổi thành thời gian bơm giả. Xem [quy trình nhật ký và CSV AI](WATERING_AND_AI_DATASET.md).
 
 ## 4. Bàn giao TV2
 
