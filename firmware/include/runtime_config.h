@@ -1,9 +1,9 @@
 #pragma once
 #include "controller.h"
-#include "runtime_profile.h"
 #if __has_include("site_config.h")
 #include "site_config.h"
 #endif
+#include "runtime_profile.h"
 #ifndef SG_WIFI_SSID
 #define SG_WIFI_SSID ""
 #endif
@@ -69,7 +69,7 @@
 #endif
 namespace runtime {
 constexpr int soilPin=34, lightPin=35, dhtPin=27, floatPin=26, relayPin=25;
-constexpr uint32_t telemetryMs=60000, sensorMs=1000, airMs=2500, pollMs=2000;
+constexpr uint32_t telemetryMs=30000, serialMs=3000, sensorMs=1000, airMs=2500, pollMs=2000;
 inline garden::Config config() {
   garden::Config c;
   c.commissioned=allowPump(SG_HARDWARE_VERIFIED,SG_CALIBRATION_VERIFIED);

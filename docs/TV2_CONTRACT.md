@@ -4,7 +4,7 @@ TV1 đã viết adapter theo hợp đồng này và mock tại tools/mock_tv2.py
 
 ## Telemetry
 
-`POST /api/v1/devices/{device_id}/telemetry`, dự kiến mỗi 60 giây. Header `X-API-Key` riêng từng thiết bị; dùng HTTPS khi ra Internet. Server kiểm tra key có quyền với device_id và chỉ ACK sau khi ghi thành công. Thiết bị chưa đồng bộ giờ: timestamp=null; giữ boot_id/uptime để chẩn đoán, không tự lấy giờ nhận làm giờ đo cho AI.
+`POST /api/v1/devices/{device_id}/telemetry`, mỗi 30 giây theo cấu hình firmware hiện tại. Header `X-API-Key` riêng từng thiết bị; dùng HTTPS khi ra Internet. Server kiểm tra key có quyền với device_id và chỉ ACK sau khi ghi thành công. Thiết bị chưa đồng bộ giờ: timestamp=null; giữ boot_id/uptime để chẩn đoán, không tự lấy giờ nhận làm giờ đo cho AI.
 
 ```json
 {
@@ -86,6 +86,6 @@ Xem TV1_RUNTIME.md để biết cấu hình, giới hạn và trạng thái nghi
 
 `feature_version=v2-watering-events`; huấn luyện lại model v1. Hàm predict chỉ nhận phút hoàn tất, trả thêm available_at và time_basis. Model/data phải cùng time_basis. Nhật ký tưới tay không có thời gian bơm giả; khoảng tưới không rõ phải bị loại. Giao thức command/telemetry của ESP32 không thay đổi bởi cập nhật dataset AI này.
 
-## Profile thu dữ liệu ngày 3
+## Chế độ chỉ thu dữ liệu
 
-Firmware build `day3` gửi `build_stage=day3_telemetry_only`, `telemetry_only=true`, `commissioned=false`, `pump_on=false`. Không poll command hoặc gửi event tưới trong profile này. Telemetry bổ sung `wifi_connected`, `telemetry_http_status`, `telemetry_sent`, `telemetry_failures`; TV2 cần cho phép các trường chẩn đoán này trong schema nhận. Các số đếm là theo boot và phản ánh trạng thái trước lần gửi hiện tại, không phải xác nhận chính gói đang nhận đã được lưu. Quy tắc khóa identity, timestamp và ACK sau lưu bền không thay đổi.
+Firmware `esp32dev` với `SG_TELEMETRY_ONLY=true` gửi `build_stage=runtime_telemetry_only`, `telemetry_only=true`, `commissioned=false`, `pump_on=false`. Không poll command hoặc gửi event tưới trong profile này. Telemetry bổ sung `wifi_connected`, `telemetry_http_status`, `telemetry_sent`, `telemetry_failures`; TV2 cần cho phép các trường chẩn đoán này trong schema nhận. Các số đếm là theo boot và phản ánh trạng thái trước lần gửi hiện tại, không phải xác nhận chính gói đang nhận đã được lưu. Quy tắc khóa identity, timestamp và ACK sau lưu bền không thay đổi.

@@ -1,11 +1,11 @@
 #pragma once
 
-namespace runtime {
-#ifdef SG_DAY3_BUILD
-constexpr bool telemetryOnly=true;
-#else
-constexpr bool telemetryOnly=false;
+#ifndef SG_TELEMETRY_ONLY
+#define SG_TELEMETRY_ONLY true
 #endif
+
+namespace runtime {
+constexpr bool telemetryOnly=SG_TELEMETRY_ONLY;
 constexpr bool allowPump(bool hardwareVerified,bool calibrationVerified) {
   return !telemetryOnly && hardwareVerified && calibrationVerified;
 }

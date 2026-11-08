@@ -8,6 +8,7 @@
 #include "controller.h"
 #include "hardware.h"
 #include "network_worker.h"
+#include "telemetry_time.h"
 
 std::atomic<bool> net::clockReady{false};
 std::atomic<bool> net::contacted{false};
@@ -25,7 +26,7 @@ garden::Controller* controller=nullptr;
 hardware::Reading reading;
 bool runtimeReady=false,clockFault=false,commissioned=false;
 char bootId[20];
-uint32_t lastTelemetry=0,sequence=0,dropped=0;
+uint32_t lastTelemetry=0,lastSerial=0,sequence=0,dropped=0;
 
 void sensorTask(void*) {
   DHT dht(runtime::dhtPin,DHT22);dht.begin();
@@ -44,15 +45,11 @@ void sensorTask(void*) {
     vTaskDelay(pdMS_TO_TICKS(runtime::sensorMs));
   }
 }
-void serializeTime(JsonVariant v,int64_t value) {
-  if(value<1700000000) {v.set(nullptr);return;}
-  time_t t=value;tm parts;gmtime_r(&t,&parts);char b[25];strftime(b,sizeof(b),"%Y-%m-%dT%H:%M:%SZ",&parts);v.set(b);
-}
 void publish(uint32_t now) {
   JsonDocument j;
-  j["schema_version"]=1;j["build_stage"]=runtime::telemetryOnly?"day3_telemetry_only":"runtime_unverified";
+  j["schema_version"]=1;j["build_stage"]=runtime::telemetryOnly?"runtime_telemetry_only":"runtime_unverified";
   j["device_id"]=SG_DEVICE_ID;j["boot_id"]=bootId;j["sample_seq"]=++sequence;
-  j["uptime_ms"]=reading.soil.sampledMs;serializeTime(j["timestamp"],clockFault?0:reading.measuredAt);
+  j["uptime_ms"]=reading.soil.sampledMs;serializeTime(j,clockFault?0:reading.measuredAt);
   j["data_origin"]="real";j["calibration_id"]=SG_CALIBRATION_ID;
   j["soil_raw"]=reading.soilRaw;j["light_raw"]=reading.lightRaw;j["light_lux"]=nullptr;
   bool valid=reading.soil.valid && uint32_t(now-reading.soil.sampledMs)<=runtime::config().staleMs;
@@ -77,6 +74,22 @@ void publish(uint32_t now) {
   if(measureJson(j)>=sizeof(packet.body)) {controller->emergencyStop(now);return;}
   serializeJson(j,packet.body,sizeof(packet.body));xQueueOverwrite(channels.telemetry,&packet);
   Serial.println(packet.body);
+}
+// Human-readable preview; not a telemetry record and does not consume sample_seq.
+void printLive(uint32_t now) {
+  bool soil=reading.soil.valid && uint32_t(now-reading.soil.sampledMs)<=runtime::config().staleMs;
+  bool air=std::isfinite(reading.temperature) && std::isfinite(reading.humidity)
+    && reading.temperature>=-40 && reading.temperature<=80 && reading.humidity>=0 && reading.humidity<=100
+    && uint32_t(now-reading.airMs)<=6000;
+  Serial.print("# live soil=");
+  if(soil) {Serial.print(reading.soil.soil,1);Serial.print("%");} else Serial.print("invalid");
+  Serial.print(" temp=");
+  if(air) {Serial.print(reading.temperature,1);Serial.print("C humidity=");Serial.print(reading.humidity,1);Serial.print("%");}
+  else Serial.print("invalid humidity=invalid");
+  Serial.printf(" light_raw=%d tank=%s pump=%s wifi=%s clock=%s http=%d\n",
+    reading.lightRaw,reading.soil.tankOK?"OK":"LOW",pump.running()?"ON":"OFF",
+    WiFi.status()==WL_CONNECTED?"OK":"WAIT",net::clockReady.load()&&!clockFault?"OK":"WAIT",
+    net::telemetryStatus.load());
 }
 void publishEvent() {
   const garden::State& state=controller->state();
@@ -113,7 +126,7 @@ void setup() {
     controller->emergencyStop(millis());Serial.println("# task init failure; output locked");return;
   }
   runtimeReady=true;
-  if(runtime::telemetryOnly) Serial.println("# Day 3: telemetry only; pump locked; remote command polling disabled.");
+  if(runtime::telemetryOnly) Serial.println("# Runtime: telemetry only; pump locked; remote command polling disabled.");
   Serial.println("# Runtime candidate: pump locked until commissioning; no commands over Serial. Network config local.");
 }
 void loop() {
@@ -147,5 +160,6 @@ void loop() {
   }
   if(!runtime::telemetryOnly) publishEvent();
   if(reading.soil.sampledMs && (!sequence || uint32_t(now-lastTelemetry)>=runtime::telemetryMs)) {lastTelemetry=now;publish(now);}
+  if(reading.soil.sampledMs && uint32_t(now-lastSerial)>=runtime::serialMs) {lastSerial=now;printLive(now);}
   delay(5);
 }

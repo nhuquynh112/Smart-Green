@@ -1,6 +1,6 @@
 # Firmware vận hành TV1 — bản chờ nghiệm thu
 
-Cập nhật 06/11/2026. Đã viết và kiểm thử offline, chưa upload và chưa nghiệm thu trên mạch. Bản `bringup` và các mốc hiệu chuẩn trong namespace NVS `sg-bench` được giữ riêng.
+Cập nhật phần thu dữ liệu 08/11/2026: runtime ở chế độ telemetry-only đã được nạp, xác nhận cảm biến, Wi-Fi, NTP và ghi log local. Điều khiển bơm và backend thật chưa nghiệm thu. Bản `bringup` và các mốc hiệu chuẩn trong namespace NVS `sg-bench` được giữ riêng.
 
 ## Phần đã triển khai
 
@@ -13,7 +13,7 @@ Cập nhật 06/11/2026. Đã viết và kiểm thử offline, chưa upload và 
 | Guard | Task esp_timer kiểm tra mỗi 10ms: hết thời gian xung, phao cạn, heartbeat main trễ hơn 500ms. Heartbeat lỗi khóa tưới đến reboot |
 | Mạng | Task riêng; Wi-Fi thử kết nối lại; HTTP có thời gian chờ và giới hạn response 4096 byte; không gọi HTTP trong vòng quyết định bơm |
 | Giờ | NTP UTC; trước đồng bộ timestamp=null và khóa lệnh bật. Sau đồng bộ, mất Wi-Fi vẫn giữ đồng hồ hệ thống; bước nhảy >10 giây được phát hiện trong loop sẽ khóa tưới đến reboot |
-| Telemetry | Khoảng 60 giây/lần; timestamp của lần đọc cảm biến, boot_id/sample_seq, calibration_id, cờ lỗi và trạng thái |
+| Telemetry | Khoảng 30 giây/lần; timestamp của lần đọc cảm biến, boot_id/sample_seq, calibration_id, cờ lỗi và trạng thái |
 | Lệnh | WATER, SET_MODE, STOP; kiểm tra kiểu, device_id, sequence, TTL, duration và source/mode; sequence thực thi lưu NVS |
 | ACK/sự kiện | Thử gửi lại khi lỗi; sự kiện giữ NVS đến ACK đúng event_id; lệnh đã thực thi có thể nhận lại sau reset nhưng không tưới lại |
 | AI | Lệnh AI khóa riêng mặc định. Chỉ xem xét bật sau đánh giá thật và nghiệm thu tích hợp |
@@ -79,7 +79,7 @@ Không có file commands thì GET next trả 204. Có thể truyền `--commands
 
 ## 5. Những gì còn phải nghiệm thu
 
-Chưa nạp bản runtime này. Chưa thử end-to-end HTTP thật với ESP32/TV2, NTP khi mất mạng, độ trễ GPIO/guard, nguồn bơm, reset/quota trên flash, ACK sau reboot hay thời gian chạy dài. Cần hoàn thành các mục trên với relay chưa gắn bơm trước, rồi mới thử bơm có giám sát. Không bật cờ commissioning chỉ vì build/test đạt.
+Đã nạp runtime telemetry-only và thu 20 mẫu thật; xem REAL_SESSION_01_2026-11-08.md. Chưa thử end-to-end HTTP thật với ESP32/TV2, NTP khi mất mạng, độ trễ GPIO/guard, nguồn bơm, reset/quota trên flash, ACK sau reboot hay thời gian chạy dài. Cần hoàn thành các mục trên với relay chưa gắn bơm trước, rồi mới thử bơm có giám sát. Không bật cờ commissioning chỉ vì build/test đạt.
 
 ## Kết quả kiểm chứng lần cập nhật này
 
@@ -88,3 +88,7 @@ Chưa nạp bản runtime này. Chưa thử end-to-end HTTP thật với ESP32/T
 - `.venv-ai/bin/python -m pytest -q ai/tests tools/tests`: **24 passed**.
 - Build dùng cấu hình mặc định khóa output; chưa có site_config.h local, không sử dụng thông tin Wi-Fi/API thật.
 - Không có thao tác upload, bật bơm hoặc mở cổng Serial trong lần triển khai runtime này.
+
+## Cấu hình chỉ thu dữ liệu
+
+Dùng chung `esp32dev` với `SG_TELEMETRY_ONLY=true` mặc định: khóa bơm và không poll lệnh remote. Chỉ đổi false khi chuẩn bị nghiệm thu điều khiển; vẫn phải đáp ứng các cờ commissioning. Xem [thiết lập telemetry](TELEMETRY_SETUP.md).

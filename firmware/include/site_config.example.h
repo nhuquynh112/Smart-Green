@@ -7,6 +7,7 @@
 #define SG_DEVICE_ID "garden-01"
 #define SG_ALLOW_LAN_HTTP false // true ONLY for a trusted isolated development LAN
 #define SG_ROOT_CA "" // PEM CA for HTTPS; never disable certificate verification
+#define SG_TELEMETRY_ONLY true // sensor upload only; keep true until control commissioning
 #define SG_HARDWARE_VERIFIED false // relay logic, OFF at reset, float, measured flow and limits
 #define SG_CALIBRATION_VERIFIED false
 #define SG_AI_COMMANDS_ENABLED false // after real-data evaluation + integration acceptance only
