@@ -84,11 +84,16 @@ def build(rows, journal, *, time_basis='device_timestamp', as_of):
             # An invalid reading invalidates that sensor's whole minute; never fill gaps.
             if group.soil_valid.all():
                 record['soil_pct'] = float(group.soil_pct.median())
+            else:
+                reasons.append('invalid_soil_sensor')
             if group.air_valid.all():
                 record['temperature_c'] = float(group.temperature_c.median())
                 record['humidity_pct'] = float(group.humidity_pct.median())
+            else:
+                reasons.append('invalid_air_sensor')
             record['minutes_since_water'] = (until - last).total_seconds() / 60
             record['water_event_count'] = len(ended)
+        record['excluded_reason'] = ';'.join(reasons)
         for reason in reasons:
             exclusions[reason] = exclusions.get(reason, 0) + 1
         output.append(record)

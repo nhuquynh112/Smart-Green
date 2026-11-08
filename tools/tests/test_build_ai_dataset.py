@@ -95,6 +95,22 @@ def test_gap_invalid_sensor_and_reboot_mask():
     assert frame.iloc[62].soil_pct>0
 
 
+def test_quality_counts_invalid_sensor_minutes_without_discarding_valid_sensor():
+    rows = telemetry(3)
+    rows[0].update(soil_valid=False, soil_pct=None)
+    rows[1].update(air_valid=False, temperature_c=None, humidity_pct=None)
+    rows[2].update(soil_valid=False, soil_pct=None, air_valid=False,
+                   temperature_c=None, humidity_pct=None)
+    frame, report = convert(rows)
+    assert report['excluded_minutes'] == 3
+    assert report['exclusions'] == {'invalid_soil_sensor': 2, 'invalid_air_sensor': 2}
+    assert frame.iloc[0].excluded_reason == 'invalid_soil_sensor'
+    assert frame.iloc[0].temperature_c == 25
+    assert frame.iloc[1].soil_pct > 0
+    assert pd.isna(frame.iloc[1].temperature_c)
+    assert frame.iloc[2].excluded_reason == 'invalid_soil_sensor;invalid_air_sensor'
+
+
 @pytest.mark.parametrize('fault',['id','overlap','hand_duration','naive','bad_coverage','negative_volume'])
 def test_bad_journal(fault):
     j=journal()

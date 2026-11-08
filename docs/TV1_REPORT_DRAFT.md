@@ -18,7 +18,9 @@ Mỗi telemetry có device_id, boot_id và sample_seq để nhận diện duy nh
 
 ## 3. Firmware và an toàn
 
-Bản bringup dành cho kiểm tra có giám sát: đọc JSON Serial, dry/wet, arm/pump/stop và giới hạn xung. Cờ thử bơm hiện khóa. Bản runtime có cảm biến, task mạng, lệnh/ACK, nhật ký NVS và logic OFF/MANUAL/AUTO; còn chờ nghiệm thu trên mạch thật.
+Bản bringup dành cho kiểm tra có giám sát: đọc JSON Serial, dry/wet, arm/pump/stop và giới hạn xung. Cờ thử bơm hiện khóa. Runtime đã đọc cảm biến, kết nối Wi-Fi, đồng bộ thời gian và xuất log trên ESP32 thật. Chế độ hiện tại là telemetry-only, bơm khóa và không polling lệnh điều khiển. Các phần lệnh/ACK, nhật ký NVS và logic OFF/MANUAL/AUTO còn chờ nghiệm thu điều khiển trên mạch thật và tích hợp backend.
+
+Chu kỳ cấu hình hiện tại: đọc cảm biến thông thường 1 giây, DHT22 2,5 giây, xem nhanh Serial 3 giây và tạo telemetry 30 giây. Gửi HTTP và hiển thị Serial là hai đường độc lập; thấy JSON trên máy chưa chứng minh server đã nhận. Xem [sơ đồ hệ thống](SYSTEM_ARCHITECTURE.md).
 
 Auto-Rule có ngưỡng thấp/cao, yêu cầu mẫu khô liên tiếp, khoảng nghỉ, giới hạn xung và quota. Khi đủ điều kiện, phao cạn và các lỗi guard phải ngăn/ngắt output. AUTO khi mất mạng và boot chưa có đồng hồ là hai trạng thái khác nhau: chưa có giờ hợp lệ thì khóa bật bơm.
 
@@ -49,11 +51,14 @@ Feature version v2 thay bộ đếm thời gian bơm bằng bộ đếm sự ki�
 | Cảm biến, relay, bơm | Bàn giao phần cứng ngày 07/11 | Đã hoạt động trong thử nghiệm cơ bản có giám sát |
 | Hiệu chuẩn đất | Hai mốc raw và soil_valid | Ánh xạ tương đối của lần thử hiện tại |
 | Parser | 42 log: 586 bản ghi hợp cấu trúc, 133 soil_valid | Log bench còn thiếu thời gian, chưa đủ để train thật |
+| Runtime và phiên thu thật 01, ngày 08/11 | 20 mẫu, 19 giờ đo hợp lệ, chu kỳ 29–31 giây; Wi-Fi và NTP hoạt động | Đã thu local; bơm OFF, chưa gửi thành công lên server |
 | Firmware core/runtime | Kiểm thử native C++ và HTTP mô phỏng | Xác minh logic; chưa xác minh GPIO/FreeRTOS/NVS thật |
 | AI v1 offline | Báo cáo ngày 07/11, dữ liệu synthetic | Pipeline chạy; không phải MAE thực nghiệm |
 | AI v2 offline | Báo cáo và demo ngày 08/11 | Kiểm thử toàn luồng nhật ký → CSV → model → đề xuất |
 
 Xem [kết quả offline v2](OFFLINE_COMPLETION_2026-11-08.md) để lấy số liệu và lệnh tái tạo mới nhất. Không trộn số liệu synthetic vào bảng kết quả trên cây thật.
+
+[Báo cáo phiên 01](REAL_SESSION_01_2026-11-08.md) ghi nhận độ ẩm tương đối 24,15–24,80%, không trùng mẫu và không lỗi sequence. Mẫu đầu chưa đồng bộ NTP nên giữ timestamp null. Phiên ngắn này chưa đủ huấn luyện dự báo 30 phút. Phiên thu tiếp theo chỉ được đưa vào kết quả sau khi kết thúc và kiểm tra chất lượng.
 
 ## 7. Nội dung phải bổ sung sau nghiệm thu
 
@@ -68,6 +73,8 @@ Các mục này chưa có số liệu thì để “chưa nghiệm thu”, khôn
 
 ## 8. Tài liệu triển khai
 
+- [Sơ đồ hệ thống và trạng thái từng đường dữ liệu](SYSTEM_ARCHITECTURE.md)
+- [Danh sách việc còn lại của TV1](TV1_REMAINING_TASKS.md)
 - [Quy trình dữ liệu AI v2](WATERING_AND_AI_DATASET.md)
 - [Hợp đồng API](TV2_CONTRACT.md)
 - [Bàn giao AI cho TV2](handoff/AI_INTEGRATION.md)

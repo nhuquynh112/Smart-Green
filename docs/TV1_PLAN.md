@@ -2,7 +2,38 @@
 
 ## Phạm vi đã thống nhất
 
-Cập nhật 06/11/2026: đã kiểm tra tín hiệu bốn cảm biến bằng bringup; relay/bơm và hiệu chuẩn đất còn chờ. Runtime IoT đã viết/build và kiểm thử offline theo TV1_RUNTIME.md; chưa nạp bản runtime lên thiết bị. Không mặc định ngày mua là ngày bắt đầu kế hoạch 14 ngày. Không có bằng chứng hiện tại để khẳng định hoàn thành phần cứng hay AI thực nghiệm.
+Cập nhật 08/11/2026: đã kiểm thử cảm biến, relay/bơm có giám sát và hiệu chuẩn đất. Runtime telemetry-only đã nạp lên ESP32, đọc cảm biến, kết nối Wi-Fi/NTP và thu log local; phiên 01 có 20 mẫu hợp lệ. Chưa nghiệm thu backend thật, tưới tự động hoặc AI trên dữ liệu thực nghiệm. Không mặc định ngày mua là ngày bắt đầu kế hoạch 14 ngày.
+
+## Đối chiếu 14 ngày và phần có thể làm trong lúc thu dữ liệu
+
+Nguồn: [kế hoạch phân công gốc](https://docs.google.com/document/d/1zqJXdOpc7KbatUblwYpyzUbmqkoZIC48Jc75ogRZkCc/edit), đối chiếu ngày 08/11/2026. Trạng thái dưới đây là phần TV1; không xác nhận phần TV2 đã hoàn thành.
+
+| Ngày | Phần đã có | Còn làm / phụ thuộc |
+| --- | --- | --- |
+| 1 | Chân GPIO, cấu trúc dữ liệu, sơ đồ chức năng | Hoàn thiện sơ đồ điện theo module thực tế và chốt server với TV2 |
+| 2 | Đọc cảm biến, hai mốc hiệu chuẩn, thử relay/bơm | Tiếp tục theo dõi độ ổn định; không đồng nghĩa đã thử điều khiển tự động |
+| 3 | Wi-Fi/NTP, log local, chu kỳ 30 giây theo yêu cầu mới | API và PostgreSQL thật, đối chiếu bản ghi, thử mất mạng cùng TV2 |
+| 4 | Auto-Rule/hysteresis/giới hạn và kiểm thử offline | Rà soát độ bao phủ ca thử trên máy được; xác minh tác động thật sau phiên thu |
+| 5 | Guard lỗi, tài liệu nghiệm thu | Chuẩn bị bảng đo được ngay; đo lưu lượng và chốt hạn mức cần bơm thật |
+| 6 | Parser, đặc trưng v2, hai baseline, Linear Regression | Pipeline đã chạy synthetic; xử lý phiên thật sau khi logger kết thúc |
+| 7 | Kiểm tra readiness; hỗ trợ horizon 30/60 phút | Chuẩn bị tiêu chí chọn horizon được ngay; quyết định thực nghiệm cần dữ liệu nhiều chu kỳ |
+| 8 | Random Forest, MAE và so sánh baseline trên synthetic | Cần dữ liệu thật để đánh giá; không cần chạy lại demo chỉ để tăng số lần thử |
+| 9 | Chọn bằng validation, lưu model/metadata, hàm predict | Model thật chờ dữ liệu; chạy server chờ TV2 |
+| 10 | Kiểm tra ID/hạn lệnh/guard trong mã và mock | Rà soát offline được; nhận lệnh AI và tưới thật cần TV2 cùng phần cứng |
+| 11 | Chống trùng, fallback và ca thử replay/reset mô phỏng | Nghiệm thu reset/mạng/NVS thật; chưa đóng băng tích hợp |
+| 12 | Checklist và ca thử lỗi offline | Có thể lập bảng truy vết yêu cầu → test → bằng chứng; thử lỗi thật làm sau phiên thu |
+| 13 | Báo cáo nháp, sơ đồ, kết quả synthetic và phiên 01 | Soạn kịch bản video/demo, dàn ý thuyết trình ngay; số liệu thật và quay video chờ nghiệm thu |
+| 14 | Có hướng dẫn và checklist phần cứng | Soạn trình tự demo/dự phòng được; kiểm tra nguồn/dây và tập demo cần mô hình, TV2 |
+
+Ưu tiên công việc độc lập tiếp theo: (1) bảng truy vết yêu cầu–kiểm thử cho ngày 4/10/11/12; (2) kế hoạch đánh giá dữ liệu thật và chọn 30/60 phút cho ngày 7–9; (3) kịch bản demo/video cho ngày 13–14. Không cần mở cổng Serial, đổi cấu hình hoặc tác động vào file phiên đang ghi để làm các việc này.
+
+Đã thực hiện phần chuẩn bị trên trong lượt tiếp theo ngày 08/11:
+
+- [Ma trận kiểm thử](TV1_TEST_TRACEABILITY.md), bổ sung sáu nhóm test biên an toàn chạy trên máy tính và đã đạt.
+- [Kế hoạch đánh giá AI thật](REAL_AI_EVALUATION_PLAN.md), gồm chọn horizon và bảo vệ tập test cuối.
+- [Kịch bản demo/video và dàn ý thuyết trình](TV1_DEMO_SCRIPT.md).
+
+Các tài liệu/test này không nâng trạng thái nghiệm thu phần cứng hoặc AI thực nghiệm.
 
 Kiến trúc một chậu, ESP32 tự quyết định an toàn; FastAPI/PostgreSQL/Web do TV2 phụ trách; TV1 sở hữu cảm biến, điều khiển, dữ liệu đầu vào, huấn luyện và đánh giá AI. Hai bên cùng chịu trách nhiệm API, xác nhận thực thi và kiểm thử toàn hệ thống.
 
@@ -29,7 +60,7 @@ Kiến trúc một chậu, ESP32 tự quyết định an toàn; FastAPI/PostgreS
 
 ## Giới hạn của bản khung hiện tại
 
-- Đã có driver GPIO/cảm biến, HTTP/NTP, guard timer task; chưa nghiệm thu trên mạch hoặc backend thật. Guard không phải mạch ngắt nguồn phần cứng.
+- Đã chạy cảm biến/Wi-Fi/NTP trên runtime thật; HTTP với backend thật và guard điều khiển bơm chưa nghiệm thu. Guard không phải mạch ngắt nguồn phần cứng.
 - Hạn mức là cửa sổ 24 giờ bắt đầu tại lần tưới đầu tiên, **không phải** mọi cửa sổ trượt 24 giờ. Phải đánh giá giới hạn sát ranh giới cửa sổ trước khi nghiệm thu.
 - Reset sẽ tắt trạng thái pumping, giữ phần thời gian đã dự trù và chờ lại đủ cooldown. Chưa biết giờ UTC sau khởi động thì khóa tưới. Cần chọn giải pháp giờ cho mất điện+mất mạng: RTC hoặc quy trình khởi động lại có giám sát.
 - Khi reset giữa lần tưới, thời gian thực tế là không biết, sự kiện có reason Reboot; không diễn giải actualMs=0 là không tưới.
