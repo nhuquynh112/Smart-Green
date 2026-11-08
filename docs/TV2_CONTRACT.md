@@ -85,3 +85,7 @@ Xem TV1_RUNTIME.md để biết cấu hình, giới hạn và trạng thái nghi
 ## AI v2 — 08/11/2026
 
 `feature_version=v2-watering-events`; huấn luyện lại model v1. Hàm predict chỉ nhận phút hoàn tất, trả thêm available_at và time_basis. Model/data phải cùng time_basis. Nhật ký tưới tay không có thời gian bơm giả; khoảng tưới không rõ phải bị loại. Giao thức command/telemetry của ESP32 không thay đổi bởi cập nhật dataset AI này.
+
+## Profile thu dữ liệu ngày 3
+
+Firmware build `day3` gửi `build_stage=day3_telemetry_only`, `telemetry_only=true`, `commissioned=false`, `pump_on=false`. Không poll command hoặc gửi event tưới trong profile này. Telemetry bổ sung `wifi_connected`, `telemetry_http_status`, `telemetry_sent`, `telemetry_failures`; TV2 cần cho phép các trường chẩn đoán này trong schema nhận. Các số đếm là theo boot và phản ánh trạng thái trước lần gửi hiện tại, không phải xác nhận chính gói đang nhận đã được lưu. Quy tắc khóa identity, timestamp và ACK sau lưu bền không thay đổi.

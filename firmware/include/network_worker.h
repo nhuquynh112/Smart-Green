@@ -21,6 +21,8 @@ struct Channels {
 extern std::atomic<bool> clockReady;
 extern std::atomic<uint32_t> lastContactMs;
 extern std::atomic<bool> contacted;
+extern std::atomic<int> telemetryStatus;
+extern std::atomic<uint32_t> telemetrySent,telemetryFailures;
 inline int64_t utc() {return clockReady.load() ? static_cast<int64_t>(time(nullptr)) : 0;}
 inline void syncCallback(timeval*) {clockReady.store(true);}
 inline bool identityOK(const char* s) {
@@ -84,7 +86,7 @@ inline void task(void* argument) {
       int code=request(root+"/commands/"+ack.seq+"/ack",body.c_str(),response);
       if(code>=200 && code<300) pendingAck=false;
     }
-    if(!pendingAck && !waitingCore) {
+    if(!runtime::telemetryOnly && !pendingAck && !waitingCore) {
       // Ask oldest unacknowledged command, including an already executed seq after a reboot.
       // Core's persisted sequence prevents replay. Backend must ACK even a rejected command.
       int code=request(root+"/commands/next?after_seq=0",nullptr,response);
@@ -103,7 +105,7 @@ inline void task(void* argument) {
       }
     }
     EventPacket event;
-    if(xQueuePeek(q.events,&event,0)==pdTRUE) {
+    if(!runtime::telemetryOnly && xQueuePeek(q.events,&event,0)==pdTRUE) {
       int code=request(root+"/events",event.json.body,response);
       JsonDocument j;
       if(code>=200 && code<300 && !deserializeJson(j,response)
@@ -114,7 +116,9 @@ inline void task(void* argument) {
     if(!pendingTelemetry && xQueueReceive(q.telemetry,&telemetry,0)==pdTRUE) pendingTelemetry=true;
     if(pendingTelemetry) {
       int code=request(root+"/telemetry",telemetry.body,response);
-      if(code>=200 && code<300) pendingTelemetry=false;
+      telemetryStatus.store(code);
+      if(code>=200 && code<300) {pendingTelemetry=false;telemetrySent.fetch_add(1);}
+      else telemetryFailures.fetch_add(1);
     }
     vTaskDelay(pdMS_TO_TICKS(runtime::pollMs));
   }

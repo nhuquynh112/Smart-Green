@@ -15,3 +15,8 @@ g++ -std=c++17 -Wall -Wextra -Werror -Ifirmware/include firmware/test/native/tes
 "$test_dir/controller"
 g++ -std=c++17 -Wall -Wextra -Werror -Ifirmware/include -I"$json_dir" firmware/test/native/test_runtime.cpp -o "$test_dir/runtime"
 "$test_dir/runtime"
+g++ -std=c++17 -Wall -Wextra -Werror -Ifirmware/include firmware/test/native/test_profile.cpp -o "$test_dir/profile"
+"$test_dir/profile"
+g++ -std=c++17 -Wall -Wextra -Werror -DSG_DAY3_BUILD=1 -Ifirmware/include firmware/test/native/test_profile.cpp -o "$test_dir/day3"
+"$test_dir/day3"
+echo 'profiles: runtime and day3 pump-lock assertions passed'

@@ -34,7 +34,7 @@ class Pump : public garden::PumpOutput {
   bool start(uint32_t duration) override {
     portENTER_CRITICAL(&mux);
     lastDuration=0;
-    bool ok=ready && SG_HARDWARE_VERIFIED && SG_CALIBRATION_VERIFIED && !tripped && !on
+    bool ok=ready && runtime::allowPump(SG_HARDWARE_VERIFIED,SG_CALIBRATION_VERIFIED) && !tripped && !on
       && duration && duration<=SG_MAX_PULSE_MS && gpio_get_level((gpio_num_t)runtime::floatPin)==0;
     if(ok) {started=millis();limit=duration;on=true;gpio_set_level((gpio_num_t)runtime::relayPin,!offLevel);}
     portEXIT_CRITICAL(&mux);

@@ -12,6 +12,8 @@
 std::atomic<bool> net::clockReady{false};
 std::atomic<bool> net::contacted{false};
 std::atomic<uint32_t> net::lastContactMs{0};
+std::atomic<int> net::telemetryStatus{0};
+std::atomic<uint32_t> net::telemetrySent{0},net::telemetryFailures{0};
 hardware::Pump pump;
 struct NvsStorage : garden::Storage {
   Preferences prefs;bool ready=false;
@@ -48,7 +50,7 @@ void serializeTime(JsonVariant v,int64_t value) {
 }
 void publish(uint32_t now) {
   JsonDocument j;
-  j["schema_version"]=1;j["build_stage"]="runtime_unverified";
+  j["schema_version"]=1;j["build_stage"]=runtime::telemetryOnly?"day3_telemetry_only":"runtime_unverified";
   j["device_id"]=SG_DEVICE_ID;j["boot_id"]=bootId;j["sample_seq"]=++sequence;
   j["uptime_ms"]=reading.soil.sampledMs;serializeTime(j["timestamp"],clockFault?0:reading.measuredAt);
   j["data_origin"]="real";j["calibration_id"]=SG_CALIBRATION_ID;
@@ -63,6 +65,9 @@ void publish(uint32_t now) {
   else {j["temperature_c"]=nullptr;j["humidity_pct"]=nullptr;}
   j["tank_ok"]=reading.soil.tankOK;j["pump_on"]=pump.running();j["mode"]=protocol::mode(controller->mode());
   j["commissioned"]=commissioned;j["storage_fault"]=controller->fault();
+  j["telemetry_only"]=runtime::telemetryOnly;j["wifi_connected"]=(WiFi.status()==WL_CONNECTED);
+  j["telemetry_http_status"]=net::telemetryStatus.load();
+  j["telemetry_sent"]=net::telemetrySent.load();j["telemetry_failures"]=net::telemetryFailures.load();
   j["clock_ready"]=net::clockReady.load();j["clock_fault"]=clockFault;
   j["server_available"]=net::contacted.load() && uint32_t(now-net::lastContactMs.load())<=60000;
   j["last_command_seq"]=controller->state().lastCommand;j["queued_events"]=controller->state().eventCount;
@@ -108,6 +113,7 @@ void setup() {
     controller->emergencyStop(millis());Serial.println("# task init failure; output locked");return;
   }
   runtimeReady=true;
+  if(runtime::telemetryOnly) Serial.println("# Day 3: telemetry only; pump locked; remote command polling disabled.");
   Serial.println("# Runtime candidate: pump locked until commissioning; no commands over Serial. Network config local.");
 }
 void loop() {
@@ -139,7 +145,7 @@ void loop() {
      && controller->state().events[0].id==id) {
     if(controller->acknowledgeEvent(id)) {net::EventPacket discarded;xQueueReceive(channels.events,&discarded,0);}
   }
-  publishEvent();
+  if(!runtime::telemetryOnly) publishEvent();
   if(reading.soil.sampledMs && (!sequence || uint32_t(now-lastTelemetry)>=runtime::telemetryMs)) {lastTelemetry=now;publish(now);}
   delay(5);
 }

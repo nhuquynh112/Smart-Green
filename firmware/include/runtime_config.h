@@ -1,5 +1,6 @@
 #pragma once
 #include "controller.h"
+#include "runtime_profile.h"
 #if __has_include("site_config.h")
 #include "site_config.h"
 #endif
@@ -71,7 +72,7 @@ constexpr int soilPin=34, lightPin=35, dhtPin=27, floatPin=26, relayPin=25;
 constexpr uint32_t telemetryMs=60000, sensorMs=1000, airMs=2500, pollMs=2000;
 inline garden::Config config() {
   garden::Config c;
-  c.commissioned=SG_HARDWARE_VERIFIED && SG_CALIBRATION_VERIFIED;
+  c.commissioned=allowPump(SG_HARDWARE_VERIFIED,SG_CALIBRATION_VERIFIED);
   c.low=SG_LOW;c.high=SG_HIGH;c.aiCeiling=c.low; // AI cannot bypass the dry threshold until deliberately revised.
   c.pulseMs=SG_PULSE_MS;c.maxPulseMs=SG_MAX_PULSE_MS;c.cooldownMs=SG_COOLDOWN_MS;
   c.maxDayMs=SG_DAY_MS;c.maxDayStarts=SG_DAY_STARTS;

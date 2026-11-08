@@ -251,6 +251,7 @@ Firmware runtime đã có mã cho nhiều cơ chế trên, nhưng còn cần ngh
 - [Nhật ký tưới và CSV AI v2](docs/WATERING_AND_AI_DATASET.md)
 - [Tích hợp AI cho TV2](docs/handoff/AI_INTEGRATION.md)
 - [Kịch bản nghiệm thu trên mạch](docs/TV1_HARDWARE_ACCEPTANCE.md)
+- [Bắt đầu ngày 3: Wi-Fi, NTP và telemetry](docs/DAY3_SETUP.md)
 - [Bản nháp báo cáo TV1](docs/TV1_REPORT_DRAFT.md)
 - [Kế hoạch triển khai TV1](docs/TV1_PLAN.md)
 - [Nguồn tham khảo](docs/REFERENCES.md)
