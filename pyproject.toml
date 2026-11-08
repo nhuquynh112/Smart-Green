@@ -23,5 +23,5 @@ smart-green-simulate = "smart_green_ai.simulate:main"
 where = ["ai"]
 
 [tool.pytest.ini_options]
-testpaths = ["ai/tests"]
+testpaths = ["ai/tests", "backend/tests", "tools/tests"]
 pythonpath = ["ai"]
