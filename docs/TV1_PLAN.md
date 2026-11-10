@@ -12,7 +12,7 @@ Nguồn: [kế hoạch phân công gốc](https://docs.google.com/document/d/1zq
 | --- | --- | --- |
 | 1 | Chân GPIO, cấu trúc dữ liệu, sơ đồ chức năng | Hoàn thiện sơ đồ điện theo module thực tế và chốt server với TV2 |
 | 2 | Đọc cảm biến, hai mốc hiệu chuẩn, thử relay/bơm | Tiếp tục theo dõi độ ổn định; không đồng nghĩa đã thử điều khiển tự động |
-| 3 | Wi-Fi/NTP, log local, chu kỳ 30 giây theo yêu cầu mới | API và PostgreSQL thật, đối chiếu bản ghi, thử mất mạng cùng TV2 |
+| 3 | Wi-Fi/NTP, log local, chu kỳ 30 giây; ngày 09/11 đã chạy ESP32 → API → PostgreSQL và đối chiếu 4 mẫu thật ([bằng chứng](ESP32_BACKEND_INTEGRATION_2026-11-09.md)) | Đã thử server ngừng phản hồi 70 giây: tự phục hồi, bơm OFF; thiếu 1 mẫu do ghi đè bộ đệm. Còn thử ngắt Wi-Fi và theo dõi dài hơn |
 | 4 | Auto-Rule/hysteresis/giới hạn và kiểm thử offline | Rà soát độ bao phủ ca thử trên máy được; xác minh tác động thật sau phiên thu |
 | 5 | Guard lỗi, tài liệu nghiệm thu | Chuẩn bị bảng đo được ngay; đo lưu lượng và chốt hạn mức cần bơm thật |
 | 6 | Parser, đặc trưng v2, hai baseline, Linear Regression | Pipeline đã chạy synthetic; xử lý phiên thật sau khi logger kết thúc |

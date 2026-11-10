@@ -25,14 +25,14 @@ python3 firmware/tool/parse_logs.py firmware/data/telemetry-session02.jsonl --ou
 
 Khoảng một giờ, chu kỳ 30 giây thường có xấp xỉ 120 mẫu; dùng timestamp và khoảng trống để đánh giá, không chỉ dựa vào số lượng. Dòng `# live` bị bỏ qua là bình thường. Xem [quy trình nhật ký và dataset](WATERING_AND_AI_DATASET.md).
 
-## Hoàn thành truyền dữ liệu ngày 3 — cần TV2
+## Hoàn thành truyền dữ liệu ESP32 → PostgreSQL — cần TV2
 
 - [ ] TV2 cung cấp URL, device ID, cách xác thực và phản hồi theo contract; bí mật điền local.
 - [ ] Sau phiên thu, cấu hình và thử gửi telemetry thật mỗi 30 giây.
 - [ ] Đối chiếu identity, timestamp và giá trị giữa ESP32 và PostgreSQL; xác nhận ACK sau lưu bền.
 - [ ] Gửi lại cùng identity không sinh bản ghi trùng.
 - [ ] Thử mất mạng/phục hồi, ghi số mẫu bị mất và giới hạn queue; không yêu cầu queue hiện tại làm điều chưa hỗ trợ.
-- [ ] Lưu bằng chứng và cập nhật trạng thái ngày 3 sau khi đạt toàn luồng.
+- [ ] Lưu bằng chứng và cập nhật trạng thái tích hợp sau khi đạt toàn luồng.
 
 ## Cần phần cứng và giám sát — làm sau phiên thu
 

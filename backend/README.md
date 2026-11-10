@@ -34,3 +34,7 @@ Run the backend tests with:
 ```bash
 PYTHONUTF8=1 python -m pytest -q backend/tests
 ```
+
+## Local Docker database and pgAdmin
+
+The current local setup uses PostgreSQL 16 and pgAdmin in `compose.yaml`. Open http://127.0.0.1:5050 to inspect the Smart Green connection. See [local database guide](../docs/LOCAL_DATABASE.md) for startup, storage and connection details.

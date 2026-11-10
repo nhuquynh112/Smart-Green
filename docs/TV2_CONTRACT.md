@@ -1,5 +1,7 @@
 # Hợp đồng TV1–TV2 v0.2 (runtime adapter đã viết, chờ tích hợp)
 
+**Cập nhật 10/11/2026:** đã tích hợp telemetry thật với PostgreSQL. Xem [trạng thái bàn giao mới](handoff/INTEGRATION_STATUS.md); các mô tả “chưa có backend” dưới đây thuộc thời điểm bàn giao ban đầu.
+
 TV1 đã viết adapter theo hợp đồng này và mock tại tools/mock_tv2.py. Backend thật chưa được nối kiểm chứng; hai bên cần thống nhất các phản hồi dưới đây.
 
 ## Telemetry

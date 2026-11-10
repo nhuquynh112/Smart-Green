@@ -1,6 +1,6 @@
 # ESP32 — Wi-Fi, thời gian và telemetry mỗi 30 giây
 
-Trạng thái: đã chuẩn bị profile thu dữ liệu; chưa có ESP32 kết nối và chưa có API TV2 để nghiệm thu.
+Trạng thái: đã nối ESP32 thật → API TV2 → PostgreSQL và thử server ngừng phản hồi/phục hồi. Xem [bằng chứng](ESP32_BACKEND_INTEGRATION_2026-11-09.md); chưa nghiệm thu điều khiển bơm hoặc ngắt Wi-Fi.
 
 ## 1. Thông tin cần chuẩn bị
 
@@ -18,14 +18,14 @@ Trên máy này đã có `firmware/include/site_config.h` được Git bỏ qua,
 | SG_DRY_RAW / SG_WET_RAW | Đã điền 2511 / 979 theo phiên hiệu chuẩn trước; kiểm tra lại khi cắm cảm biến |
 | SG_CALIBRATION_VERIFIED | Giữ false tới khi xác nhận cảm biến/vị trí và hai mốc vẫn đúng, sau đó mới true |
 | SG_TELEMETRY_ONLY | Giữ true để chỉ thu/gửi dữ liệu |
-| SG_HARDWARE_VERIFIED / SG_AI_COMMANDS_ENABLED | Giữ false trong ngày 3 |
-| SG_RELAY_ACTIVE_LOW | Example ngày 3 dùng false theo bringup đã thử; phải xác minh mức OFF thực tế |
+| SG_HARDWARE_VERIFIED / SG_AI_COMMANDS_ENABLED | Giữ false trong chế độ chỉ thu dữ liệu |
+| SG_RELAY_ACTIVE_LOW | Cấu hình thu dữ liệu dùng false theo bringup đã thử; phải xác minh mức OFF thực tế |
 
-Trong ngày 3, ngắt nguồn tải bơm trước khi nạp/thử runtime. Khóa phần mềm không khắc phục được đấu dây sai hoặc mức kích relay sai.
+Khi chỉ thu dữ liệu, ngắt nguồn tải bơm trước khi nạp/thử runtime. Khóa phần mềm không khắc phục được đấu dây sai hoặc mức kích relay sai.
 
 ## 2. Build và nạp khi đã có thiết bị
 
-Tại thư mục gốc repo, nếu `pio` chưa có trong PATH thì dùng `/home/ad/.platformio/penv/bin/pio` thay cho `pio`.
+Tại thư mục gốc repo, nếu `pio` chưa có trong PATH thì dùng `đường dẫn pio trong môi trường PlatformIO của máy` thay cho `pio`.
 
 ```bash
 pio run -d firmware -e esp32dev
@@ -74,7 +74,7 @@ python firmware/tool/parse_logs.py firmware/data/telemetry-session01.jsonl --out
 
 Lần đầu chỉ thu 10 phút để kiểm tra cấu hình. Logger có thể làm thiết bị reset khi mở cổng; lưu boot_id mới. Không cần đợi đủ dữ liệu AI để kiểm tra giao tiếp.
 
-## 5. Tiêu chí hoàn tất ngày 3
+## 5. Tiêu chí nghiệm thu truyền dữ liệu
 
 - [ ] ESP32 thật kết nối Wi-Fi, đồng bộ giờ, timestamp UTC hợp lệ.
 - [ ] Nhận nhiều mẫu liên tiếp cách khoảng 30 giây, boot_id/sample_seq rõ ràng, không có bơm chạy.
@@ -83,4 +83,4 @@ Lần đầu chỉ thu 10 phút để kiểm tra cấu hình. Logger có thể l
 - [ ] Kết nối lại tự phục hồi gửi dữ liệu; khoảng mất mẫu hiện trong báo cáo, không điền giả.
 - [ ] Lưu log, cấu hình không chứa bí mật, commit firmware và bằng chứng database.
 
-Nếu TV2 chưa có API, vẫn có thể kiểm tra Wi-Fi/NTP/Serial, nhưng mục gửi và lưu DB còn chưa đạt. `tools/mock_tv2.py` chỉ giúp thử HTTP, không thay PostgreSQL hoặc nghiệm thu ngày 3.
+Nếu TV2 chưa có API, vẫn có thể kiểm tra Wi-Fi/NTP/Serial, nhưng mục gửi và lưu DB còn chưa đạt. `tools/mock_tv2.py` chỉ giúp thử HTTP, không thay PostgreSQL hoặc nghiệm thu truyền dữ liệu.

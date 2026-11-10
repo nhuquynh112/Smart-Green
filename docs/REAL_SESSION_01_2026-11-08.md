@@ -20,7 +20,7 @@ Nguồn: `firmware/data/telemetry-session01.jsonl`, SHA256 `f7bfe3084bca1cdbc7cd
 
 Wi-Fi và đồng bộ thời gian đã hoạt động trên runtime thật. Firmware đã sửa lỗi timestamp không được tạo trong JSON; null trước NTP được giữ nguyên. Không dùng giờ nhận để lấp giờ đo còn thiếu. Dòng Serial `# live` không phải JSON, nên bộ thu bỏ qua; không diễn giải số dòng bỏ qua là số mẫu cảm biến bị mất.
 
-Đây là phép kiểm tra thu dữ liệu local, **chưa hoàn tất ngày 3 end-to-end** và không phải nghiệm thu điều khiển bơm.
+Đây là phép kiểm tra thu dữ liệu local, **chưa hoàn tất luồng ESP32 → API → PostgreSQL** và không phải nghiệm thu điều khiển bơm.
 
 ## Đánh giá khả năng huấn luyện
 

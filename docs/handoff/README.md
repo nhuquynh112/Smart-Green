@@ -1,5 +1,7 @@
 # Bàn giao TV1 → TV2 — cập nhật 08/11/2026
 
+**Cập nhật 10/11/2026:** đã tích hợp telemetry thật với PostgreSQL. Xem [trạng thái bàn giao mới](INTEGRATION_STATUS.md); các mô tả “chưa có backend” dưới đây thuộc thời điểm bàn giao ban đầu.
+
 Đây là gói mã nguồn và bằng chứng kiểm thử offline. Bringup đã thử bơm có giám sát; chưa nghiệm thu runtime ESP32 ↔ backend thật hoặc tưới tự động. Không chứa mật khẩu/API key hoặc mô hình được phép tự kích bơm.
 
 Runtime telemetry-only đã đọc cảm biến, kết nối Wi-Fi, đồng bộ NTP và thu JSONL local trên thiết bị thật. [Phiên 01](../REAL_SESSION_01_2026-11-08.md) có 20 mẫu, 19 timestamp hợp lệ; chưa gửi thành công lên API. Chu kỳ telemetry hiện là **30 giây**, xem nhanh Serial là **3 giây**. Không dùng kết quả local để xác nhận PostgreSQL đã lưu.
@@ -16,7 +18,7 @@ Runtime telemetry-only đã đọc cảm biến, kết nối Wi-Fi, đồng bộ
 ## Kiểm tra lại trên repo Smart-Green
 
 ```bash
-cd /home/ad/Desktop/Smart-Green
+cd <PROJECT_ROOT>
 bash tools/test_firmware.sh
 .venv-ai/bin/python -m pytest -q ai/tests tools/tests
 .venv-ai/bin/python -m pytest -q integration/test_http_runtime.py
