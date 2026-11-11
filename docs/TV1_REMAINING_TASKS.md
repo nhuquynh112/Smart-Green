@@ -1,5 +1,33 @@
 # Việc còn lại của TV1
 
+## Mốc hiện tại — 11/11/2026 (ưu tiên hơn danh sách lịch sử bên dưới)
+
+- Đã sửa luồng điều khiển, trạng thái dashboard và thời điểm tính xung; Python 97 tests + 8 subtests, dashboard 13 tests, native firmware đạt; ESP32 build/upload thành công.
+- Đã nạp bản sửa và restart backend lúc khoảng 21:38; telemetry mẫu 2 xác nhận OFF, pump_running=false, clock_ready=true, không lỗi clock/storage. Chưa thử bơm thật trên bản vừa nạp.
+- Phiên W01 đã xử lý: 1.062 mẫu trong 8 giờ 50 phút, 528 phút dùng được theo bộ lọc hiện tại. Xem [báo cáo W01](REAL_SESSION_W01_2026-11-11.md). Chưa đủ bằng chứng nhiều chu kỳ độc lập để kết luận AI tốt.
+
+### Buổi test tiếp theo
+
+1. Thử MANUAL cùng thời lượng 3 lần, hứng riêng từng lần và đo ml; quan sát motor dừng và không có nước tự chảy tiếp. Ghi command ID, thời lượng log và quan sát thật. 30–35 ml trước đây chỉ là ước lượng.
+2. Xác minh STOP/OFF, phao thiếu nước, OFF sau reset; lưu bằng chứng. STOP qua mạng có độ trễ, ACK không phải cảm biến xác nhận motor.
+3. Chốt chính sách hạn mức trước nghiệm thu AUTO: MANUAL bỏ giới hạn số lần nhưng vẫn dùng chung bộ đếm và ngân sách thời gian với AUTO. Không xóa NVS để vượt quota. Thử AUTO khô bật/đủ ẩm dừng, hysteresis, khoảng nghỉ và quota sau khi chính sách nhất quán.
+4. Thử mất Wi-Fi/backend rồi phục hồi, lệnh trùng/hết hạn và reset; đối chiếu DB, ACK, mẫu thiếu và sự kiện, không chỉ nhìn dashboard.
+
+### Để hoàn thành TV1
+
+- [ ] Nghiệm thu phần cứng và điều khiển bằng bảng kết quả trên bản mới; cố định đường ống/cảm biến và đo lưu lượng.
+- [ ] Xử lý chính sách quota chung và request dashboard treo; kiểm thử tích hợp PostgreSQL trên DB thử riêng cùng TV2.
+- [ ] Thu thêm các chu kỳ khô–tưới độc lập với nhật ký; không dùng số giờ riêng lẻ làm tiêu chí đủ dữ liệu.
+- [ ] Đánh giá baseline, Linear Regression, Random Forest bằng chia thời gian và tập test riêng; báo cáo MAE thật và giới hạn, không lấy MAE synthetic.
+- [ ] Tích hợp dự báo ở chế độ quan sát, kiểm tra fallback; nghiệm thu phần phối hợp TV1/TV2.
+- [ ] Hoàn thiện sơ đồ mạch thực tế, bảng hiệu chuẩn, biểu đồ, báo cáo, video và hướng dẫn chạy lại.
+
+TV1 đang ở mốc tích hợp/nghiệm thu (nhóm ngày 10–12 trong kế hoạch); phần AI thực nghiệm ngày 6–9 và hồ sơ ngày 13–14 vẫn còn. Đây không phải xác nhận đã hoàn thành toàn bộ các ngày trước.
+
+---
+
+## Danh sách lịch sử ngày 08/11/2026
+
 Cập nhật 08/11/2026. Danh sách dựa trên bằng chứng hiện có, không tính phần mềm offline là đã nghiệm thu phần cứng.
 
 ## Trong lúc phiên thu đang chạy

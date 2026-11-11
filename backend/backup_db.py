@@ -44,6 +44,9 @@ def create_backup(db: Database, output_dir: str | Path | None = None,
         "tables": {},
     }
     with db.transaction() as conn:
+        if not db.sqlite:
+            # Keep every table at the same snapshot while telemetry keeps arriving.
+            db.execute_on(conn, "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
         for table, ordering in TABLES.items():
             backup["tables"][table] = db.all_on(conn, f"SELECT * FROM {table} ORDER BY {ordering}")
     target = output / name

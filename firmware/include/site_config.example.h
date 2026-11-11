@@ -21,5 +21,6 @@
 #define SG_PULSE_MS 1000
 #define SG_MAX_PULSE_MS 1000
 #define SG_COOLDOWN_MS 600000
+#define SG_MANUAL_COOLDOWN_MS 0 // Manual: no cooldown
 #define SG_DAY_MS 4000
 #define SG_DAY_STARTS 4

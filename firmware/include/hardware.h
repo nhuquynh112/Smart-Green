@@ -43,6 +43,7 @@ class Pump : public garden::PumpOutput {
   void off() override {
     portENTER_CRITICAL(&mux);gpio_set_level((gpio_num_t)runtime::relayPin,offLevel);if(on) lastDuration=uint32_t(millis()-started);on=false;portEXIT_CRITICAL(&mux);
   }
+  uint32_t startedAt(uint32_t) override {portENTER_CRITICAL(&mux);uint32_t v=started;portEXIT_CRITICAL(&mux);return v;}
   uint32_t actualDuration(uint32_t) override {portENTER_CRITICAL(&mux);uint32_t v=lastDuration;portEXIT_CRITICAL(&mux);return v;}
   void heartbeat() {portENTER_CRITICAL(&mux);beat=millis();portEXIT_CRITICAL(&mux);}
   bool running() {portENTER_CRITICAL(&mux);bool v=on;portEXIT_CRITICAL(&mux);return v;}

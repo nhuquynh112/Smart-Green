@@ -8,14 +8,17 @@ enum class Reason : uint8_t { Running, Duration, Wet, Sensor, Tank, Stop, Reboot
 enum class Source : uint8_t { Rule, Manual, AI };
 struct Config {
   bool commissioned = false;
+  bool manualUnlimitedStarts = false;
   float low = 30, high = 45, aiCeiling = 40;
   uint32_t pulseMs = 2000, maxPulseMs = 3000, cooldownMs = 600000;
+  uint32_t manualCooldownMs = UINT32_MAX; // Sentinel uses cooldownMs; zero disables manual cooldown.
   uint32_t maxDayMs = 12000, maxDayStarts = 4, staleMs = 4000;
   bool valid() const {
     return std::isfinite(low) && std::isfinite(high) && std::isfinite(aiCeiling)
       && low >= 0 && low < high && high <= 100 && aiCeiling >= low && aiCeiling < high
       && pulseMs > 0 && pulseMs <= maxPulseMs && maxPulseMs <= 60000
       && cooldownMs >= 1000 && cooldownMs < 0x80000000UL
+      && (manualCooldownMs == UINT32_MAX || manualCooldownMs == 0 || (manualCooldownMs >= 1000 && manualCooldownMs < 0x80000000UL))
       && maxDayMs >= maxPulseMs && maxDayStarts > 0 && staleMs >= 1000;
   }
 };
@@ -52,6 +55,7 @@ struct Command {
 struct PumpOutput {
   virtual bool start(uint32_t durationMs) = 0;
   virtual void off() = 0;
+  virtual uint32_t startedAt(uint32_t fallback) { return fallback; }
   virtual uint32_t actualDuration(uint32_t fallback) { return fallback; }
   virtual ~PumpOutput() = default;
 };
@@ -74,6 +78,11 @@ class Controller {
   const State& state() const { return state_; }
   bool pumping() const { return pumping_; }
   bool fault() const { return fault_; }
+  uint32_t cooldownRemaining(uint32_t now) const {
+    const uint32_t elapsed=uint32_t(now-stoppedMs_);
+    const uint32_t interval=state_.mode==Mode::Manual && cfg_.manualCooldownMs!=UINT32_MAX ? cfg_.manualCooldownMs : cfg_.cooldownMs;
+    return elapsed>=interval ? 0 : interval-elapsed;
+  }
   Mode mode() const { return state_.mode; }
   void tick(uint32_t ms, int64_t utc, const Sensor& s, bool deadlineFired = false) {
     if (pumping_) {
@@ -93,10 +102,15 @@ class Controller {
   }
   const char* command(const Command& c, uint32_t ms, int64_t utc, const Sensor& s) {
     // Even an expired STOP may shut the pump down, never starts it.
-    if (c.kind == Command::Kind::Stop) stop(ms, Reason::Stop);
-    if (c.seq == 0 || c.seq <= state_.lastCommand) return "duplicate";
+    const bool safeOff=c.kind==Command::Kind::Stop || (c.kind==Command::Kind::SetMode && c.mode==Mode::Off);
+    if (safeOff) {
+      stop(ms, Reason::Stop);
+      // A stale/duplicate STOP must also prevent AUTO from restarting on the next tick.
+      if(state_.mode!=Mode::Off){state_.mode=Mode::Off;dryCount_=0;if(!persist())return "storage_fault";}
+    }
+    if (c.seq == 0 || c.seq <= state_.lastCommand) return safeOff?"stopped":"duplicate";
     if (utc < 1700000000 || c.issuedAt > utc+5 || c.expiresAt <= utc
-        || c.expiresAt <= c.issuedAt || c.expiresAt-c.issuedAt > 60) return "expired_or_clock";
+        || c.expiresAt <= c.issuedAt || c.expiresAt-c.issuedAt > 60) return safeOff?"stopped":"expired_or_clock";
     state_.lastCommand = c.seq;
     if (!persist()) return "storage_fault";
     if (c.kind == Command::Kind::Stop) {
@@ -135,13 +149,13 @@ class Controller {
     if (fault_ || !cfg_.valid() || !cfg_.commissioned) return "not_commissioned_or_fault";
     if (pumping_) return "busy";
     if (!fresh(ms,s) || !s.tankOK || s.soil >= cfg_.high) return "sensor_tank_or_wet";
-    if (uint32_t(ms-stoppedMs_) < cfg_.cooldownMs) return "cooldown";
+    if (cooldownRemaining(ms)) return "cooldown";
     if (!duration || duration > cfg_.maxPulseMs) return "duration_limit";
     if (utc < 1700000000 || utc < state_.windowStart || utc < state_.lastWaterAt) return "clock";
     if (!state_.windowStart || utc-state_.windowStart >= 86400) {
       state_.windowStart=utc; state_.reservedMs=0; state_.starts=0;
     }
-    if (state_.starts >= cfg_.maxDayStarts || state_.reservedMs > cfg_.maxDayMs
+    if ((!(source==Source::Manual && cfg_.manualUnlimitedStarts) && state_.starts >= cfg_.maxDayStarts) || state_.reservedMs > cfg_.maxDayMs
         || duration > cfg_.maxDayMs-state_.reservedMs) return "quota";
     if (state_.eventCount == 32 || state_.nextEvent == UINT32_MAX) return "event_log_full";
     Event& e=state_.events[state_.eventCount++];
@@ -154,6 +168,7 @@ class Controller {
     if (output_ && !output_->start(duration)) {
       stop(ms, Reason::Guard); fault_=true; return "output_fault";
     }
+    if (output_) startedMs_=output_->startedAt(ms);
     return "started";
   }
   void stop(uint32_t ms,Reason reason) {

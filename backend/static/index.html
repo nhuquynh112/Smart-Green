@@ -33,10 +33,10 @@
       <article class="card sensor"><div class="sensor-head"><span>Phao mực nước</span><span class="sensor-icon">⌁</span></div><div class="sensor-value" style="font-size:18px;margin-top:22px" id="tankValue">Chưa rõ</div><div class="sensor-meta">GPIO26 · Công tắc phao</div><div style="margin-top:10px" id="tankStatus"></div></article>
     </section>
     <section class="grid main-grid">
-      <article class="card chart-card"><div class="panel-head"><div><h2 class="panel-title">Diễn biến cảm biến</h2><p class="panel-sub">Độ ẩm đất và nhiệt độ theo thời gian</p></div><span id="updatedAt" class="status-pill">Chưa đồng bộ</span></div><div class="chart-box"><canvas id="historyChart"></canvas></div></article>
+      <article class="card chart-card"><div class="panel-head"><div><h2 class="panel-title">Diễn biến cảm biến</h2><p class="panel-sub">Độ ẩm đất và nhiệt độ · 30 phút tính đến mẫu đo mới nhất</p></div><span id="updatedAt" class="status-pill">Chưa đồng bộ</span></div><div class="chart-box"><canvas id="historyChart"></canvas></div></article>
       <article class="card control-card"><div class="panel-head"><div><h2 class="panel-title">Điều khiển thiết bị</h2><p class="panel-sub">Lệnh có hiệu lực tối đa 60 giây</p></div><span id="onlinePill" class="status-pill">Offline</span></div>
         <div class="control-state"><span>Chế độ hiện tại</span><strong id="modeNow">—</strong></div>
-        <label class="field-label" for="modeSelect">Chọn chế độ</label><div class="control-row"><select id="modeSelect" class="select"><option>OFF</option><option>MANUAL</option><option>AUTO</option></select><button id="modeBtn" class="btn btn-quiet admin-action">Cập nhật</button></div>
+        <p id="commandFeedback" class="field-label" role="status" aria-live="polite"></p><label class="field-label" for="modeSelect">Chọn chế độ</label><div class="control-row"><select id="modeSelect" class="select"><option>OFF</option><option>MANUAL</option><option>AUTO</option></select><button id="modeBtn" class="btn btn-quiet admin-action">Cập nhật</button></div>
         <label class="field-label" for="waterSeconds">Tưới thủ công (giây)</label><div class="control-row"><input id="waterSeconds" class="input" type="number" min="0.1" max="1" step="0.1" value="0.5"><button id="waterBtn" class="btn btn-primary admin-action">Tưới ngay</button></div>
         <div id="waterLock" class="lock-message">Đang kiểm tra điều kiện cảm biến.</div>
         <button id="stopBtn" class="btn btn-danger admin-action">Dừng bơm · STOP</button>
@@ -48,7 +48,7 @@
         <div><div class="panel-head" style="margin-bottom:5px"><div><h3 class="panel-title" style="font-size:13px">So sánh mô hình</h3><p id="modelMeta" class="panel-sub">Đang tải thông tin đánh giá…</p></div></div><table class="mae-table"><thead><tr><th>Mô hình</th><th>MAE kiểm thử (điểm %)</th></tr></thead><tbody id="maeBody"><tr><td colspan="2" class="empty">Chưa có báo cáo mô hình</td></tr></tbody></table><p class="help">Kết quả hiện tại dùng dữ liệu giả lập để kiểm tra pipeline; không đại diện cho độ chính xác trên cây thật.</p></div></div>
     </section>
     <section class="grid lower-grid">
-      <article class="card"><div class="panel-head"><div><h2 class="panel-title">Lịch sử tưới</h2><p class="panel-sub">Các lần bơm và sự kiện tưới đã ghi nhận</p></div><a id="exportCsv" class="btn btn-quiet export-btn" href="#">⬇ Xuất CSV cảm biến</a></div><div class="stats-grid"><div class="stat-box"><span>Số lần tưới (24h)</span><strong id="statDaily">—</strong><small id="statDailyNote">Giới hạn an toàn</small></div><div class="stat-box"><span>Tổng sự kiện tưới</span><strong id="statCount">—</strong><small id="statCountNote">Thủ công · Tự động</small></div><div class="stat-box"><span>Tổng thời gian bơm</span><strong id="statDuration">—</strong><small id="statDurationMs">—</small></div><div class="stat-box"><span>Lượng nước ước tính</span><strong id="statWater">—</strong><small id="statFlowNote">—</small></div></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Thời điểm</th><th>Nguồn</th><th>Lý do</th><th>Thực tế</th></tr></thead><tbody id="eventsBody"><tr><td colspan="4" class="empty">Chưa có sự kiện</td></tr></tbody></table></div></article>
+      <article class="card"><div class="panel-head"><div><h2 class="panel-title">Lịch sử chạy bơm</h2><p class="panel-sub">Thời lượng do firmware ghi nhận, chưa xác nhận lưu lượng hoặc chuyển động của bơm</p></div><a id="exportCsv" class="btn btn-quiet export-btn" href="#">⬇ Xuất CSV cảm biến</a></div><div class="stats-grid"><div class="stat-box"><span>Hạn mức trên ESP32</span><strong id="statDaily">—</strong><small id="statDailyNote">Giới hạn an toàn</small></div><div class="stat-box"><span>Tổng lần chạy bơm</span><strong id="statCount">—</strong><small id="statCountNote">Thủ công · Tự động</small></div><div class="stat-box"><span>Tổng thời gian bơm</span><strong id="statDuration">—</strong><small id="statDurationMs">—</small></div><div class="stat-box"><span>Lượng nước ước tính</span><strong id="statWater">—</strong><small id="statFlowNote">—</small></div></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Thời điểm</th><th>Nguồn</th><th>Lý do</th><th>Thời lượng ghi nhận</th></tr></thead><tbody id="eventsBody"><tr><td colspan="4" class="empty">Chưa có sự kiện</td></tr></tbody></table></div></article>
       <article class="card"><div class="panel-head"><div><h2 class="panel-title">Hàng đợi lệnh</h2><p class="panel-sub">Trạng thái thực thi và xác nhận từ ESP32</p></div></div><div class="table-wrap"><table class="data-table"><thead><tr><th>#</th><th>Lệnh</th><th>Trạng thái</th><th>Kết quả ACK</th><th>Hết hạn</th></tr></thead><tbody id="commandsBody"><tr><td colspan="5" class="empty">Chưa có lệnh</td></tr></tbody></table></div></article>
     </section>
     <section class="card hardware"><div class="panel-head"><div><h2 class="panel-title">Trạng thái thiết bị & đồng bộ</h2><p class="panel-sub">Thông tin phiên firmware và hàng đợi lưu bền</p></div><span id="demoTag" class="status-pill">—</span></div><div class="hardware-grid" id="hardwareGrid"></div></section>
@@ -63,8 +63,53 @@
   let selected = '';
   let chart;
   let dashboard;
+  let refreshing = false;
+  let refreshFailed = false;
+  let refreshNotice = null;
+  const sending = new Set();
+  const trackedCommands = new Map();
+  const commandMessages = new Map();
+  const ackLabels = {mode_set:'Đã đổi chế độ', started:'ESP32 xác nhận đã bật đầu ra bơm', stopped:'ESP32 xác nhận đã tắt đầu ra bơm', cooldown:'Chưa tưới: đang trong thời gian nghỉ giữa hai lần bơm', mode_or_ai_ceiling:'Chưa tưới: thiết bị chưa ở chế độ MANUAL', sensor_tank_or_wet:'Chưa tưới: điều kiện cảm biến, phao hoặc độ ẩm chưa đạt', not_commissioned_or_fault:'Chưa tưới: thiết bị chưa được xác nhận phần cứng hoặc có lỗi', quota:'Chưa tưới: đã đạt giới hạn tưới', expired_or_clock:'Lệnh hết hạn hoặc đồng hồ chưa hợp lệ'};
+  function controlState(d) {
+    const t=d.latest||{};
+    let payload=t.payload||{};
+    if(typeof payload==='string'){try{payload=JSON.parse(payload);}catch{payload={};}}
+    let mode=t.mode||'OFF', modeFromAck=false;
+    // Use only a newer, successful acknowledgement from this boot window.
+    const bootStart=new Date(t.received_at).getTime()-Number(t.uptime_ms||0);
+    const confirmed=(d.commands||[]).find(c=>c.command_seq>Number(t.last_command_seq||0)
+      && c.issued_at*1000>=bootStart && c.ack_result
+      && ((c.kind==='SET_MODE'&&c.ack_result==='mode_set')||((c.kind==='STOP'||(c.kind==='SET_MODE'&&c.mode==='OFF'))&&c.ack_result==='stopped')));
+    if(confirmed){mode=confirmed.kind==='STOP'?'OFF':confirmed.mode;modeFromAck=true;}
+    // Countdown starts at reception, so transport delay cannot unlock early.
+    const elapsed=Math.max(0,Date.now()-new Date(t.received_at).getTime());
+    const remaining=Number.isFinite(payload.cooldown_remaining_ms)?Math.max(0,payload.cooldown_remaining_ms-elapsed):null;
+    const lastWater=(d.commands||[]).find(c=>c.kind==='WATER'&&c.ack_result);
+    return {mode,modeFromAck,remaining,payload,lastWater,unknownCooldown:remaining===null&&lastWater?.ack_result==='cooldown'};
+  }
+  function commandState(d) {
+    const tracked=trackedCommands.get(selected);
+    if(tracked) {
+      const c=(d.commands||[]).find(c=>c.command_seq===tracked);
+      if(c && (c.ack_result || c.status!=='PENDING')) {
+        commandMessages.set(selected,c.ack_result ? `Lệnh #${tracked}: ${c.ack_result==='started' && (d.watering_events||[]).some(e=>e.command_seq===c.command_seq)?'Đã có bản ghi kết thúc lần bơm':c.ack_result==='mode_set'?`Đã chuyển sang ${c.mode}`:ackLabels[c.ack_result]||c.ack_result}.` : `Lệnh #${tracked}: ${c.status==='EXPIRED'?'Đã hết hạn, chưa được xác nhận thực hiện':c.status}.`);
+        trackedCommands.delete(selected);
+      }
+    }
+    const completed=(d.watering_events||[]).find(e=>commandMessages.get(selected)?.startsWith(`Lệnh #${e.command_seq}:`));
+    if(completed)commandMessages.set(selected,`Lệnh #${completed.command_seq}: Đã kết thúc · ${completed.actual_ms===null?'thời lượng không xác định':`${completed.actual_ms} ms`} · ${completed.reason}.`);
+    const pending=(d.commands||[]).some(c=>c.status==='PENDING'&&!c.ack_result);
+    const busy=sending.has(selected)||trackedCommands.has(selected)||pending;
+    $('modeBtn').disabled=busy||$('modeSelect').value===controlState(d).mode;
+    $('modeBtn').textContent=busy?'Đang chờ…':'Cập nhật';
+    $('commandFeedback').textContent=commandMessages.get(selected)||(pending?'Có lệnh đang chờ ESP32 xác nhận.':'');
+    return busy;
+  }
+  let modeSelectionDevice = null;
+  let modeSelectionEdited = false;
   const metricNames = {persistence:'Baseline 1: Giữ nguyên (Persistence)',linear_extrapolation:'Baseline 2: Ngoại suy tuyến tính (Linear Extrapolation)',linear_regression:'Linear Regression',random_forest:'Random Forest'};
   const fmt = value => value === null || value === undefined || value === '' ? '—' : Number.isFinite(Number(value)) ? Number(value).toLocaleString('vi-VN',{maximumFractionDigits:2}) : value;
+  const escapeHtml = value => String(value??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const time = value => value ? new Date(value).toLocaleString('vi-VN',{hour12:false}) : '—';
   const basicHeaders = () => auth ? {'Authorization':`Basic ${auth}`,'Content-Type':'application/json'} : {'Content-Type':'application/json'};
   async function api(url, options={}) {
@@ -81,51 +126,94 @@
   $('loginBtn').onclick=()=>{if(auth){auth='';sessionStorage.removeItem('sg_auth');$('loginBtn').textContent='Đăng nhập quản trị';notice('Đã đăng xuất quản trị.','ok');}else openLogin();};
   $('cancelLogin').onclick=()=>$('loginModal').classList.remove('open');
   $('loginForm').onsubmit=async event=>{event.preventDefault();auth=btoa(`${$('username').value}:${$('password').value}`);try{await api('/api/v1/web/auth/check');sessionStorage.setItem('sg_auth',auth);$('loginModal').classList.remove('open');$('loginBtn').textContent='Đăng xuất quản trị';notice('Đăng nhập quản trị thành công.','ok');await refresh();}catch(e){auth='';sessionStorage.removeItem('sg_auth');notice(e.message,'error');}};
-  $('deviceSelect').onchange=()=>{selected=$('deviceSelect').value;refresh();};
+  $('deviceSelect').onchange=()=>{selected=$('deviceSelect').value;$('waterBtn').disabled=true;$('modeBtn').disabled=true;refresh();};
+  $('modeSelect').onchange=()=>{modeSelectionEdited=true;if(dashboard)render(dashboard);};
   function setPill(el,text,kind=''){el.textContent=text;el.className=`status-pill ${kind}`;}
   function renderChart(history, prediction){
     if(!window.Chart)return;
-    const points=history.filter(x=>x.measured_at).slice(-60);
-    const labels=points.map(x=>new Date(x.measured_at).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'}));
-    const soil=points.map(x=>x.soil_valid?x.soil_pct:null), temp=points.map(x=>x.air_valid?x.temperature_c:null);
-    if(prediction?.status==='available'){labels.push('Dự đoán +30p');soil.push(prediction.predicted_soil_pct);temp.push(null);}
-    const config={type:'line',data:{labels,datasets:[{label:'Độ ẩm đất (%)',data:soil,borderColor:'#25845b',backgroundColor:'#dff0e5',fill:true,tension:.32,spanGaps:false,pointRadius:2,yAxisID:'y'},{label:'Nhiệt độ (°C)',data:temp,borderColor:'#e0a03e',tension:.3,spanGaps:false,pointRadius:1,yAxisID:'y1'}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:8,font:{family:'DM Sans',size:11}}}},scales:{x:{grid:{display:false},ticks:{maxTicksLimit:9,font:{size:10}}},y:{position:'left',title:{display:true,text:'Độ ẩm đất (%)'},min:0,max:100,grid:{color:'#edf1ed'}},y1:{position:'right',title:{display:true,text:'Nhiệt độ (°C)'},grid:{drawOnChartArea:false}}}}};
+    const ordered=history.filter(x=>Number.isFinite(Date.parse(x.measured_at))).sort((a,b)=>Date.parse(a.measured_at)-Date.parse(b.measured_at));
+    const end=ordered.length?Date.parse(ordered[ordered.length-1].measured_at):Date.now();
+    const start=end-30*60*1000;
+    const points=ordered.filter(x=>Date.parse(x.measured_at)>=start);
+    const soil=[],temp=[];
+    let previous=null;
+    for(const point of points){
+      const x=Date.parse(point.measured_at);
+      if(previous!==null && x-previous>90000){soil.push({x:previous+1,y:null});temp.push({x:previous+1,y:null});}
+      soil.push({x,y:point.soil_valid?point.soil_pct:null});
+      temp.push({x,y:point.air_valid?point.temperature_c:null});
+      previous=x;
+    }
+    // Prediction is shown separately: it must not appear as an observed sample.
+    const config={type:'line',data:{datasets:[{label:'Độ ẩm đất (%)',data:soil,borderColor:'#25845b',backgroundColor:'#dff0e5',fill:true,tension:0,spanGaps:false,pointRadius:2,yAxisID:'y'},{label:'Nhiệt độ (°C)',data:temp,borderColor:'#e0a03e',tension:0,spanGaps:false,pointRadius:1,yAxisID:'y1'}]},options:{animation:false,responsive:true,maintainAspectRatio:false,interaction:{mode:'nearest',intersect:false},plugins:{tooltip:{callbacks:{title:items=>items.length?time(items[0].parsed.x):''}},legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:8,font:{family:'DM Sans',size:11}}}},scales:{x:{type:'linear',min:start,max:end,grid:{display:false},ticks:{maxTicksLimit:9,font:{size:10},callback:value=>new Date(value).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}},y:{position:'left',title:{display:true,text:'Độ ẩm đất (%)'},min:0,max:100,grid:{color:'#edf1ed'}},y1:{position:'right',title:{display:true,text:'Nhiệt độ (°C)'},grid:{drawOnChartArea:false}}}}};
     if(chart){chart.data=config.data;chart.options=config.options;chart.update();}else chart=new Chart($('historyChart'),config);
   }
   function render(d){
-    dashboard=d;const device=d.device||{}, t=d.latest||{};
-    $('soilValue').innerHTML=`${fmt(t.soil_pct)}<span> %</span>`;const dry=device.dry_raw??2511,wet=device.wet_raw??979;$('soilMeta').textContent=`ADC ${fmt(t.soil_raw)} · Mốc khô/ướt: ${fmt(dry)} / ${fmt(wet)}`;
+    dashboard=d;const device=d.device||{}, t=d.latest||{}, control=controlState(d);
+    $('soilValue').innerHTML=`${escapeHtml(fmt(t.soil_pct))}<span> %</span>`;const dry=device.dry_raw??2511,wet=device.wet_raw??979;$('soilMeta').textContent=`ADC ${fmt(t.soil_raw)} · Mốc khô/ướt: ${fmt(dry)} / ${fmt(wet)}`;
     $('soilStatus').innerHTML=`<span class="status-pill ${t.soil_valid?'good':'bad'}"><i class="dot"></i>${t.soil_valid?'Cảm biến hợp lệ':'Cảm biến lỗi'}</span>`;
-    $('tempValue').innerHTML=`${fmt(t.temperature_c)}<span> °C</span>`;$('airValue').innerHTML=`${fmt(t.humidity_pct)}<span> %</span>`;$('lightValue').textContent=fmt(t.light_raw);
+    $('tempValue').innerHTML=`${escapeHtml(fmt(t.temperature_c))}<span> °C</span>`;$('airValue').innerHTML=`${escapeHtml(fmt(t.humidity_pct))}<span> %</span>`;$('lightValue').textContent=fmt(t.light_raw);
     const water=t.water_ok??t.tank_ok; $('tankValue').textContent=water===true||water===1?'Đủ nước':water===false||water===0?'Cảnh báo hết nước':'Chưa rõ';
     $('tankStatus').innerHTML=`<span class="status-pill ${(water===true||water===1)?'good':'bad'}"><i class="dot"></i>${(water===true||water===1)?'Phao an toàn':'Kiểm tra bình nước'}</span>`;
     const online=!!device.connected&&!!device.last_seen_at&&(Date.now()-new Date(device.last_seen_at).getTime()<120000);
-    setPill($('onlinePill'),online?'Online':'Offline',online?'good':'bad');$('modeNow').textContent=t.mode||'—';$('modeSelect').value=t.mode||'OFF';$('updatedAt').textContent=`Nhận lúc ${time(t.received_at)}`;
+    setPill($('onlinePill'),online?'Online':'Offline',online?'good':'bad');$('modeNow').textContent=control.mode+(control.modeFromAck?' · ESP32 đã xác nhận':'');
+    if(modeSelectionDevice!==device.device_id){modeSelectionDevice=device.device_id;modeSelectionEdited=false;}
+    if(!modeSelectionEdited && document.activeElement!==$('modeSelect')) $('modeSelect').value=control.mode;
+    $('updatedAt').textContent=`Nhận lúc ${time(t.received_at)}`;
     $('demoTag').textContent=device.is_demo?'Dữ liệu demo':'Thiết bị';$('demoTag').className=`status-pill ${device.is_demo?'':'good'}`;$('historyComplete').checked=!!device.watering_history_complete;
-    const lock=[];if(!(water===true||water===1))lock.push('Phao không xác nhận đủ nước');if(!(t.soil_valid===true||t.soil_valid===1))lock.push('Cảm biến đất lỗi hoặc chưa có dữ liệu');
-    $('waterBtn').disabled=lock.length>0;$('waterLock').textContent=lock.length?`Đã khoá tưới: ${lock.join(' · ')}.`:auth?'Điều kiện cảm biến đạt; backend vẫn áp dụng giới hạn thời gian xung.':'Cần đăng nhập quản trị để gửi lệnh tưới.';
+    const commandBusy=commandState(d);
+    const lock=[];if(refreshFailed)lock.push('Mất kết nối backend; chờ cập nhật trạng thái');if(commandBusy)lock.push('Đang chờ xác nhận lệnh trước');if(control.mode!=='MANUAL')lock.push('Chờ chế độ hiện tại chuyển sang MANUAL');if(control.mode==='MANUAL' && !control.modeFromAck && control.remaining>0){const seconds=Math.ceil(control.remaining/1000);lock.push(`Đang nghỉ: còn ${Math.floor(seconds/60)} phút ${seconds%60} giây (sau khởi động hoặc lần bơm gần nhất)`);}else if(control.mode==='MANUAL' && !control.modeFromAck && control.unknownCooldown)lock.push('ESP32 báo đang nghỉ; cần firmware mới để hiển thị thời gian còn lại');if(!online)lock.push('Thiết bị đang offline');
+    const receivedAge=Date.now()-new Date(t.received_at).getTime(), measuredAge=Date.now()-new Date(t.measured_at).getTime();
+    if(!Number.isFinite(receivedAge)||receivedAge>90000||!Number.isFinite(measuredAge)||measuredAge>90000||measuredAge< -5000)lock.push('Dữ liệu đã cũ hoặc chưa có thời gian đo hợp lệ');
+    if(!(t.clock_ready===true||t.clock_ready===1)||t.clock_fault)lock.push('Đồng hồ chưa sẵn sàng');
+    if(!(t.commissioned===true||t.commissioned===1)||t.storage_fault)lock.push('Thiết bị chưa sẵn sàng hoặc có lỗi');
+    if(t.pump_running)lock.push('Bơm đang chạy');
+    if(control.modeFromAck && t.mode!==control.mode)lock.push('Đã nhận ACK; đang chờ trạng thái cảm biến mới');
+    const limits=control.payload, requestedMs=Number($('waterSeconds').value)*1000;
+    if(Number.isFinite(limits.max_pulse_ms))$('waterSeconds').max=limits.max_pulse_ms/1000;
+    if(!Number.isFinite(requestedMs)||requestedMs<=0)lock.push('Nhập thời lượng tưới hợp lệ');
+    if(requestedMs>limits.max_pulse_ms)lock.push(`Mỗi lần tối đa ${limits.max_pulse_ms/1000} giây`);
+    if((limits.quota_limit_starts>0 && limits.quota_starts>=limits.quota_limit_starts) || requestedMs+limits.quota_reserved_ms>limits.quota_limit_ms)lock.push('Đã đạt hạn mức ESP32; xem hạn mức bên dưới');
+    if(limits.quota_limit_starts===undefined&&control.lastWater?.ack_result==='quota')lock.push('ESP32 báo hết hạn mức; cần firmware mới để xem giới hạn thực');if(!(water===true||water===1))lock.push('Phao không xác nhận đủ nước');if(!(t.soil_valid===true||t.soil_valid===1))lock.push('Cảm biến đất lỗi hoặc chưa có dữ liệu');
+    $('waterBtn').disabled=lock.length>0;$('waterLock').textContent=lock.length?`Đã khoá tưới: ${lock.join(' · ')}.`:auth?'Sẵn sàng gửi yêu cầu. Bấm một lần và chờ ESP32 xác nhận.':'Cần đăng nhập quản trị để gửi lệnh tưới.';
     const boolLabel=(value,yes,no)=>value===true||value===1?yes:value===false||value===0?no:'Chưa xác định';const hw=[['Phiên khởi động (boot_id)',t.boot_id],['Số thứ tự mẫu (sample_seq)',t.sample_seq],['Lệnh gần nhất (last_command_seq)',t.last_command_seq],['Sự kiện chờ gửi (queued_events)',t.queued_events],['Lỗi lưu trữ (storage_fault)',boolLabel(t.storage_fault,'Cảnh báo lỗi (true)','An toàn (false)')],['Đồng hồ hệ thống (clock_ready)',boolLabel(t.clock_ready,'Đã đồng bộ (true)','Chưa sẵn sàng (false)')],['Lỗi đồng hồ (clock_fault)',boolLabel(t.clock_fault,'Lỗi RTC (true)','Không có lỗi (false)')],['Mã hiệu chuẩn (calibration_id)',device.calibration_id||t.calibration_id]];
-    $('hardwareGrid').innerHTML=hw.map(([a,b])=>`<div class="hardware-item"><span>${a}</span><strong>${b===undefined||b===null?'—':b}</strong></div>`).join('');
+    $('hardwareGrid').innerHTML=hw.map(([a,b])=>`<div class="hardware-item"><span>${a}</span><strong>${escapeHtml(b)}</strong></div>`).join('');
     $('exportCsv').href=`/api/v1/web/devices/${encodeURIComponent(device.device_id)}/export-csv`;
-    const stats=d.watering_stats||{};$('statDaily').textContent=`${fmt(stats.events_last_24h)} / ${fmt(stats.max_daily_events)} lần`;$('statDailyNote').textContent='Giới hạn an toàn';$('statCount').textContent=`${fmt(stats.total_events)} lần`;$('statCountNote').textContent=`Thủ công: ${fmt(stats.manual_count)} · Tự động: ${fmt(stats.auto_count)}`;$('statDuration').textContent=`${Number(stats.total_actual_seconds||0).toLocaleString('vi-VN',{minimumFractionDigits:1,maximumFractionDigits:1})} giây`;$('statDurationMs').textContent=`${fmt(stats.total_actual_ms)} ms`;$('statWater').textContent=`~${fmt(stats.estimated_water_ml)} ml`;$('statFlowNote').textContent=stats.flow_note||'Ước tính theo lưu lượng cấu hình';
+    const stats=d.watering_stats||{};$('statDaily').textContent=Number.isFinite(limits.quota_limit_starts)?(limits.quota_limit_starts===0?`${fmt(limits.quota_starts)} lần · Không giới hạn số lần`:`${fmt(limits.quota_starts)} / ${fmt(limits.quota_limit_starts)} lần`):'Chưa có hạn mức ESP32';$('statDailyNote').textContent=Number.isFinite(limits.quota_limit_ms)?`Đã dành ${fmt(limits.quota_reserved_ms/1000)} / ${fmt(limits.quota_limit_ms/1000)} giây · Đặt lại: ${limits.quota_window_ends_at?time(limits.quota_window_ends_at*1000):'chưa bắt đầu cửa sổ'}`:'Nạp firmware hỗ trợ báo hạn mức thực';$('statCount').textContent=`${fmt(stats.total_events)} lần`;$('statCountNote').textContent=`Thủ công: ${fmt(stats.manual_count)} · Tự động: ${fmt(stats.auto_count)}`;$('statDuration').textContent=`${Number(stats.total_actual_seconds||0).toLocaleString('vi-VN',{minimumFractionDigits:1,maximumFractionDigits:1})} giây`;$('statDurationMs').textContent=`${fmt(stats.total_actual_ms)} ms`;$('statWater').textContent=stats.flow_is_configured?`~${fmt(stats.estimated_water_ml)} ml`:'Chưa hiệu chuẩn';$('statFlowNote').textContent=stats.flow_is_configured?(stats.flow_note||'Ước tính theo lưu lượng cấu hình'):'Cần đo lượng nước thực tế; chưa quy đổi sang ml';
     const metrics=d.model_evaluation?.test_mae||{};$('modelMeta').textContent=d.model_evaluation?`Mô hình: ${metricNames[d.model_evaluation.selected_model]||d.model_evaluation.selected_model}${d.model_evaluation.selected_model==='linear_regression'?' (Hồi quy tuyến tính)':''} · Dự báo trước ${d.model_evaluation.horizon_minutes} phút · Nguồn dữ liệu: ${d.model_evaluation.data_origin}`:'Chưa có thông tin mô hình';$('academicLabel').textContent=`Nguồn: ${d.model_evaluation?.data_origin==='synthetic'?'Dữ liệu giả lập (synthetic)':d.model_evaluation?.data_origin||'chưa rõ'} · Khóa tự động bật bơm (can_trigger_pump=false)`;
-    $('maeBody').innerHTML=Object.entries(metricNames).map(([key,label])=>`<tr><td>${label}${key===d.model_evaluation?.selected_model?' · Được chọn':''}</td><td>${fmt(metrics[key])}</td></tr>`).join('');
+    $('maeBody').innerHTML=Object.entries(metricNames).map(([key,label])=>`<tr><td>${label}${key===d.model_evaluation?.selected_model?' · Được chọn':''}</td><td>${escapeHtml(fmt(metrics[key]))}</td></tr>`).join('');
     const ai=d.latest_ai?.raw_output||d.latest_ai;showPrediction(ai);
-    const sourceName=value=>({MANUAL:'Thủ công',RULE:'Tự động',AI:'AI đề xuất',SCHEDULED:'Theo lịch'}[String(value||'').toUpperCase()]||value||'—');const reasonName=value=>({Reboot:'Gián đoạn do khởi động lại',Manual:'Tưới thủ công',ManualCheck:'Kiểm tra bơm',Scheduled:'Tưới theo lịch',Duration:'Tưới theo thời lượng',Threshold:'Tưới theo ngưỡng'}[value]||value||'—');$('eventsBody').innerHTML=d.watering_events?.length?d.watering_events.map(e=>`<tr><td>${time(((Number(e.ended_at)||Number(e.started_at)||0))*1000)}</td><td>${sourceName(e.source)}</td><td>${reasonName(e.reason)}</td><td>${e.reason==='Reboot'&&e.actual_ms===null?'Gián đoạn do khởi động lại':e.actual_ms===null?'Chưa ghi nhận':`${(Number(e.actual_ms)/1000).toLocaleString('vi-VN',{minimumFractionDigits:1,maximumFractionDigits:1})} giây (${fmt(e.actual_ms)} ms)`}</td></tr>`).join(''):'<tr><td colspan="4" class="empty">Chưa có sự kiện</td></tr>';
-    $('commandsBody').innerHTML=d.commands?.length?d.commands.map(c=>`<tr><td>${c.command_seq}</td><td>${c.kind}${c.mode?` · ${c.mode}`:''}${c.duration_ms?` · ${c.duration_ms} ms`:''}</td><td>${c.status}</td><td>${c.ack_result||'—'}</td><td>${time(Number(c.expires_at)*1000)}</td></tr>`).join(''):'<tr><td colspan="5" class="empty">Chưa có lệnh</td></tr>';
+    const sourceName=value=>({MANUAL:'Thủ công',RULE:'Tự động',AI:'AI đề xuất',SCHEDULED:'Theo lịch'}[String(value||'').toUpperCase()]||value||'—');const reasonName=value=>({Reboot:'Gián đoạn do khởi động lại',Manual:'Tưới thủ công',ManualCheck:'Kiểm tra bơm',Scheduled:'Tưới theo lịch',Duration:'Tưới theo thời lượng',Threshold:'Tưới theo ngưỡng',Tank:'Dừng do phao báo thiếu nước',Stop:'Dừng theo lệnh'}[value]||value||'—');$('eventsBody').innerHTML=d.watering_events?.length?d.watering_events.map(e=>`<tr><td>${time(((Number(e.ended_at)||Number(e.started_at)||0))*1000)}</td><td>${escapeHtml(sourceName(e.source))}</td><td>${escapeHtml(reasonName(e.reason))}</td><td>${e.reason==='Reboot'&&e.actual_ms===null?'Gián đoạn do khởi động lại':e.actual_ms===null?'Chưa ghi nhận':`${(Number(e.actual_ms)/1000).toLocaleString('vi-VN',{minimumFractionDigits:1,maximumFractionDigits:1})} giây (${fmt(e.actual_ms)} ms)`}</td></tr>`).join(''):'<tr><td colspan="4" class="empty">Chưa có sự kiện</td></tr>';
+    $('commandsBody').innerHTML=d.commands?.length?d.commands.map(c=>`<tr><td>${escapeHtml(c.command_seq)}</td><td>${escapeHtml(c.kind)}${c.mode?` · ${escapeHtml(c.mode)}`:''}${c.duration_ms?` · ${escapeHtml(c.duration_ms)} ms`:''}</td><td>${escapeHtml(c.status)}</td><td>${escapeHtml(c.ack_result||'—')}</td><td>${time(Number(c.expires_at)*1000)}</td></tr>`).join(''):'<tr><td colspan="5" class="empty">Chưa có lệnh</td></tr>';
     renderChart(d.history||[],ai);
   }
   function showPrediction(ai){if(!ai){$('aiState').textContent='Chưa chạy';$('predictionValue').textContent='—';$('predictionReason').textContent='Chưa có dự đoán được lưu.';return;}setPill($('aiState'),ai.status==='available'?'Có kết quả':'Không khả dụng',ai.status==='available'?'good':'bad');$('predictionValue').textContent=ai.status==='available'?`${fmt(ai.predicted_soil_pct)}%`:'—';$('predictionReason').textContent=ai.status==='available'?`Mô hình: Linear Regression (Hồi quy tuyến tính) · Dự báo trước ${ai.horizon_minutes} phút · Dữ liệu sẵn sàng lúc ${time(ai.available_at)} · Điều kiện: Không tưới thêm.`:`Lý do: ${ai.reason||'Không đủ điều kiện dữ liệu.'}`;}
-  async function loadDevices(){const list=await api('/api/v1/web/devices');const select=$('deviceSelect');const old=selected;select.innerHTML=list.map(d=>{const label=d.device_id==='fittonia-bench'?'Cây Cẩm nhung (Fittonia) · Kịch bản Bench':d.device_id==='SIM-ONLY'?'Mô phỏng AI v2 (SIM-ONLY · 14.400 mẫu)':d.display_name||d.device_id;return `<option value="${d.device_id}">${label}</option>`;}).join('');if(!list.length){notice('Chưa có thiết bị. Chạy backend/seed_demo.py để nạp dữ liệu trình diễn.','warn');return;}selected=list.some(d=>d.device_id===old)?old:list[0].device_id;select.value=selected;await refresh();}
-  async function refresh(){if(!selected)return;try{clearNotice();const d=await api(`/api/v1/web/devices/${encodeURIComponent(selected)}/dashboard`);render(d);}catch(e){notice(e.message,'error');}}
-  async function createCommand(body){if(!auth){openLogin();return;}try{const r=await api(`/api/v1/web/devices/${encodeURIComponent(selected)}/commands`,{method:'POST',body:JSON.stringify(body)});notice(`Đã xếp lệnh #${r.command_seq} (${r.kind}). Lệnh hết hạn sau tối đa 60 giây.`,'ok');await refresh();}catch(e){notice(e.message,'error');}}
+  async function loadDevices(){const list=await api('/api/v1/web/devices');const select=$('deviceSelect');const old=selected;select.innerHTML=list.map(d=>{const label=d.device_id==='fittonia-bench'?'Cây Cẩm nhung (Fittonia) · Kịch bản Bench':d.device_id==='SIM-ONLY'?'Mô phỏng AI v2 (SIM-ONLY · 14.400 mẫu)':d.display_name||d.device_id;return `<option value="${escapeHtml(d.device_id)}">${escapeHtml(label)}</option>`;}).join('');if(!list.length){notice('Chưa có thiết bị. Chạy backend/seed_demo.py để nạp dữ liệu trình diễn.','warn');return;}selected=list.some(d=>d.device_id===old)?old:list[0].device_id;select.value=selected;await refresh();}
+  async function refresh(){if(!selected||refreshing)return;refreshing=true;const deviceId=selected;try{const d=await api(`/api/v1/web/devices/${encodeURIComponent(deviceId)}/dashboard`);if(selected===deviceId){refreshFailed=false;if(refreshNotice && $('notice').textContent===refreshNotice)clearNotice();refreshNotice=null;render(d);}}catch(e){if(selected===deviceId){refreshFailed=true;refreshNotice=e.message;notice(e.message,'error');if(dashboard)render(dashboard);}}finally{refreshing=false;if(selected!==deviceId)refresh();}}
+  async function createCommand(body){
+    if(!auth){openLogin();return;}
+    if(body.kind!=='STOP' && dashboard?.device?.device_id!==selected)return;
+    if(body.kind==='WATER'&&$('waterBtn').disabled)return;
+    const deviceId=selected;
+    if(body.kind!=='STOP' && (sending.has(deviceId)||trackedCommands.has(deviceId)||(dashboard?.commands||[]).some(c=>c.status==='PENDING'&&!c.ack_result)))return;
+    sending.add(deviceId);
+    commandMessages.set(deviceId,'Đang gửi lệnh…');
+    if(dashboard)render(dashboard);
+    try{
+      const r=await api(`/api/v1/web/devices/${encodeURIComponent(deviceId)}/commands`,{method:'POST',body:JSON.stringify(body)});
+      trackedCommands.set(deviceId,r.command_seq);
+      commandMessages.set(deviceId,`Đã gửi lệnh #${r.command_seq}; đang chờ ESP32 xác nhận. Không cần bấm lại.`);
+    }catch(e){commandMessages.set(deviceId,`Chưa xác nhận gửi lệnh: ${e.message}. Kiểm tra hàng đợi trước khi thử lại.`);}
+    finally{sending.delete(deviceId);if(selected===deviceId&&dashboard)render(dashboard);await refresh();}
+  }
   $('modeBtn').onclick=()=>createCommand({kind:'SET_MODE',mode:$('modeSelect').value,ttl_sec:30});
+  $('waterSeconds').oninput=()=>{if(dashboard)render(dashboard);};
   $('waterBtn').onclick=()=>{const seconds=Number($('waterSeconds').value);if(!Number.isFinite(seconds)||seconds<=0){notice('Nhập thời gian tưới hợp lệ.','error');return;}createCommand({kind:'WATER',duration_ms:Math.round(seconds*1000),ttl_sec:30});};
   $('stopBtn').onclick=()=>createCommand({kind:'STOP',ttl_sec:30});
   $('predictBtn').onclick=async()=>{if(!auth){openLogin();return;}try{const result=await api(`/api/v1/web/devices/${encodeURIComponent(selected)}/predict`,{method:'POST',body:JSON.stringify({watering_history_complete:$('historyComplete').checked})});showPrediction(result);notice(result.status==='available'?'Đã lưu kết quả dự đoán AI.':'AI từ chối dự đoán an toàn: '+result.reason,result.status==='available'?'ok':'warn');await refresh();}catch(e){notice(e.message,'error');}};
   $('clock').textContent=new Date().toLocaleDateString('vi-VN',{weekday:'short',day:'2-digit',month:'long',year:'numeric'});
   $('loginBtn').textContent=auth?'Đăng xuất quản trị':'Đăng nhập quản trị';
-    loadDevices().catch(e=>notice(e.message,'error'));setInterval(()=>{if(selected)refresh();},5000);
+    loadDevices().catch(e=>notice(e.message,'error'));setInterval(()=>{if(selected)refresh();},2000);
 })();
 </script>
 </body>

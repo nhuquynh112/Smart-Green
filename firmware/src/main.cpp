@@ -49,6 +49,18 @@ void publish(uint32_t now) {
   JsonDocument j;
   j["schema_version"]=1;j["build_stage"]=runtime::telemetryOnly?"runtime_telemetry_only":"runtime_unverified";
   j["device_id"]=SG_DEVICE_ID;j["boot_id"]=bootId;j["sample_seq"]=++sequence;
+  j["control_revision"]="reviewed-controls-v4";
+  const auto limits=runtime::config();
+  const auto& state=controller->state();
+  const int64_t utcNow=net::utc();
+  const bool quotaExpired=utcNow>=1700000000 && state.windowStart && utcNow-state.windowStart>=86400;
+  j["max_pulse_ms"]=limits.maxPulseMs;
+  j["quota_limit_ms"]=limits.maxDayMs;j["quota_limit_starts"]=(controller->mode()==garden::Mode::Manual && limits.manualUnlimitedStarts)?0:limits.maxDayStarts; // zero: no count limit
+  j["quota_reserved_ms"]=quotaExpired?0:state.reservedMs;
+  j["quota_starts"]=quotaExpired?0:state.starts;
+  j["quota_window_ends_at"]=state.windowStart?state.windowStart+86400:0;
+  j["control_uptime_ms"]=now;
+  j["cooldown_remaining_ms"]=controller->cooldownRemaining(now);
   j["uptime_ms"]=reading.soil.sampledMs;serializeTime(j,clockFault?0:reading.measuredAt);
   j["data_origin"]="real";j["calibration_id"]=SG_CALIBRATION_ID;
   j["soil_raw"]=reading.soilRaw;j["light_raw"]=reading.lightRaw;j["light_lux"]=nullptr;
@@ -141,6 +153,9 @@ void loop() {
     lastUtc=utc;clockMs=now;
   }
   if(clockFault) {controller->emergencyStop(now);utc=0;}
+  const auto previousMode=controller->mode();
+  const bool previousPump=controller->pumping();
+  const uint32_t previousCommand=controller->state().lastCommand;
   uint32_t stopped;garden::Reason why;
   if(pump.takeTrip(stopped,why)) controller->externalStop(stopped,why);
   net::Inbound in;
@@ -152,6 +167,9 @@ void loop() {
     net::Ack ack;ack.seq=in.command.seq;snprintf(ack.result,sizeof(ack.result),"%s",result);
     xQueueSend(channels.acks,&ack,0);
   }
+  // Commands may persist to flash before switching the output on. Refresh the
+  // tick time so it cannot precede the physical start (unsigned rollover).
+  now=millis();
   controller->tick(now,utc,reading.soil);
   uint32_t id;
   if(xQueueReceive(channels.eventAcks,&id,0)==pdTRUE && controller->state().eventCount
@@ -159,7 +177,10 @@ void loop() {
     if(controller->acknowledgeEvent(id)) {net::EventPacket discarded;xQueueReceive(channels.events,&discarded,0);}
   }
   if(!runtime::telemetryOnly) publishEvent();
-  if(reading.soil.sampledMs && (!sequence || uint32_t(now-lastTelemetry)>=runtime::telemetryMs)) {lastTelemetry=now;publish(now);}
+  // Report command outcomes and pump transitions without waiting for the sensor interval.
+  const bool controlChanged=previousMode!=controller->mode() || previousPump!=controller->pumping()
+      || previousCommand!=controller->state().lastCommand;
+  if(reading.soil.sampledMs && (controlChanged || !sequence || uint32_t(now-lastTelemetry)>=runtime::telemetryMs)) {lastTelemetry=now;publish(now);}
   if(reading.soil.sampledMs && uint32_t(now-lastSerial)>=runtime::serialMs) {lastSerial=now;printLive(now);}
   delay(5);
 }

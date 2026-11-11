@@ -292,12 +292,16 @@ def test_web_command_water_interlocks_and_sequence(db, client, monkeypatch):
     assert response.status_code == 400 and "Cảm biến" in response.json()["detail"]
 
     good = telemetry(3)
+    good.update(mode="MANUAL", commissioned=True, timestamp=utc_iso())
     client.post(url, headers=headers(), json=good)
     response = client.post(web_url, admin=True, json={"kind": "WATER", "duration_ms": 1001, "ttl_sec": 30})
     assert response.status_code == 400 and "giới hạn an toàn" in response.json()["detail"]
     response = client.post(web_url, admin=True, json=request)
     assert response.status_code == 201 and response.json()["command_seq"] == 1
     assert response.json()["source"] == "MANUAL"
+    duplicate = client.post(web_url, admin=True, json=request)
+    assert duplicate.status_code == 409
+    client.post(f"/api/v1/devices/{DEVICE}/commands/1/ack", headers=headers(), json={"schema_version":1,"device_id":DEVICE,"command_seq":1,"result":"started"})
     mode = client.post(web_url, admin=True, json={"kind": "SET_MODE", "mode": "AUTO"})
     stop = client.post(web_url, admin=True, json={"kind": "STOP"})
     assert mode.json()["command_seq"] == 2 and stop.json()["command_seq"] == 3
@@ -467,3 +471,122 @@ def test_json_database_backup_contains_all_five_tables(db, tmp_path):
     assert set(payload["tables"]) == set(TABLES)
     assert payload["tables"]["devices"][0]["device_id"] == DEVICE
     assert all(isinstance(payload["tables"][table], list) for table in TABLES)
+
+@pytest.mark.parametrize('changes', [
+    {'quota_limit_starts':4,'quota_starts':4},
+    {'quota_limit_ms':4000,'quota_reserved_ms':3800},
+    {'clock_ready':False}, {'storage_fault':True}, {'commissioned':False},
+    {'mode':'OFF'}, {'pump_on':True}, {'cooldown_remaining_ms':600000},
+    {'timestamp':'2020-01-01T00:00:00Z'},
+])
+def test_water_rejects_unready_device(client, changes):
+    row=telemetry();row.update(mode='MANUAL',commissioned=True,timestamp=utc_iso());row.update(changes)
+    assert client.post(f'/api/v1/devices/{DEVICE}/telemetry',headers=headers(),json=row).status_code==200
+    result=client.post(f'/api/v1/web/devices/{DEVICE}/commands',admin=True,json={'kind':'WATER','duration_ms':500})
+    assert result.status_code==409
+
+
+def test_stop_supersedes_waiting_mode(client, db):
+    url=f'/api/v1/web/devices/{DEVICE}/commands'
+    assert client.post(url,admin=True,json={'kind':'SET_MODE','mode':'AUTO'}).status_code==201
+    assert client.post(url,admin=True,json={'kind':'STOP'}).status_code==201
+    command=client.get(f'/api/v1/devices/{DEVICE}/commands/next?after_seq=0',headers=headers()).json()
+    assert command['kind']=='STOP'
+    assert db.one('SELECT status FROM commands WHERE device_id=? AND command_seq=1',(DEVICE,))['status']=='EXPIRED'
+
+
+def test_rejects_invalid_control_limits(client):
+    row=telemetry();row['quota_limit_ms']='unlimited'
+    assert client.post(f'/api/v1/devices/{DEVICE}/telemetry',headers=headers(),json=row).status_code==422
+
+
+def test_http_route_auth_and_quota_end_to_end(db):
+    import asyncio
+    import json
+
+    async def scenario():
+        app=create_app(db=db,bundle=None)
+        async def post(path, body, request_headers=None):
+            encoded=json.dumps(body).encode();messages=[];delivered=False
+            async def receive():
+                nonlocal delivered
+                if not delivered:
+                    delivered=True
+                    return {"type":"http.request","body":encoded,"more_body":False}
+                await asyncio.Event().wait()
+            async def send(message): messages.append(message)
+            scope={"type":"http","asgi":{"version":"3.0"},"http_version":"1.1","method":"POST",
+                   "scheme":"http","path":path,"raw_path":path.encode(),"query_string":b"",
+                   "root_path":"","server":("test",80),"client":("test",1),
+                   "headers":[(b"content-type",b"application/json")]+[(k.lower().encode(),v.encode()) for k,v in (request_headers or {}).items()]}
+            await app(scope,receive,send)
+            status=next(m["status"] for m in messages if m["type"]=="http.response.start")
+            content=b"".join(m.get("body",b"") for m in messages if m["type"]=="http.response.body")
+            return status,json.loads(content) if content else None
+        path=f'/api/v1/web/devices/{DEVICE}/commands'
+        status,_=await post(path,{'kind':'WATER','duration_ms':500})
+        assert status==401
+        row=telemetry();row.update(mode='MANUAL',commissioned=True,timestamp=utc_iso(),quota_limit_starts=4,quota_starts=4)
+        status,_=await post(f'/api/v1/devices/{DEVICE}/telemetry',row,headers())
+        assert status==200
+        app.dependency_overrides[_admin_auth]=lambda:'test-admin'
+        status,body=await post(path,{'kind':'WATER','duration_ms':500})
+        assert status==409 and 'hạn mức' in body['detail']
+        status,_=await post(path,{'kind':'STOP'})
+        assert status==201
+    asyncio.run(scenario())
+
+
+def test_postgres_backup_selects_snapshot_before_reading_tables(tmp_path):
+    from contextlib import contextmanager
+    from backend.backup_db import TABLES, create_backup
+
+    class SnapshotDatabase:
+        sqlite = False
+        calls = []
+
+        @contextmanager
+        def transaction(self):
+            yield self
+
+        def execute_on(self, conn, sql):
+            self.calls.append(sql)
+
+        def all_on(self, conn, sql):
+            assert self.calls[0] == "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY"
+            self.calls.append(sql)
+            return []
+
+    db = SnapshotDatabase()
+    create_backup(db, tmp_path)
+    assert len(db.calls) == 1 + len(TABLES)
+
+
+@pytest.mark.parametrize("flow", [None, "invalid", "nan", "0", "-1"])
+def test_dashboard_does_not_invent_uncalibrated_volume(client, monkeypatch, flow):
+    if flow is None:
+        monkeypatch.delenv("SG_PUMP_FLOW_ML_PER_SEC", raising=False)
+    else:
+        monkeypatch.setenv("SG_PUMP_FLOW_ML_PER_SEC", flow)
+    stats = client.get(f"/api/v1/web/devices/{DEVICE}/dashboard").json()["watering_stats"]
+    assert stats["flow_is_configured"] is False
+    assert stats["estimated_water_ml"] is None
+    assert stats["pump_flow_ml_per_sec"] is None
+
+@pytest.mark.parametrize('reserved,expected', [(4000,201),(20000,409)])
+def test_unlimited_count_still_checks_time_budget(client, reserved, expected):
+    row=telemetry();row.update(mode='MANUAL',commissioned=True,timestamp=utc_iso(),quota_limit_starts=0,quota_starts=20,quota_limit_ms=20000,quota_reserved_ms=reserved)
+    assert client.post(f'/api/v1/devices/{DEVICE}/telemetry',headers=headers(),json=row).status_code==200
+    result=client.post(f'/api/v1/web/devices/{DEVICE}/commands',admin=True,json={'kind':'WATER','duration_ms':500})
+    assert result.status_code==expected
+
+
+@pytest.mark.parametrize('body', [
+    {'kind':'SET_MODE','mode':'OFF','duration_ms':500},
+    {'kind':'STOP','mode':'AUTO'},
+    {'kind':'WATER','duration_ms':500,'mode':'AUTO'},
+])
+def test_command_rejects_fields_for_another_kind(client, db, body):
+    response=client.post(f'/api/v1/web/devices/{DEVICE}/commands',admin=True,json=body)
+    assert response.status_code==400
+    assert db.one('SELECT COUNT(*) AS n FROM commands')['n']==0

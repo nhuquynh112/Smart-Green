@@ -61,6 +61,9 @@
 #ifndef SG_COOLDOWN_MS
 #define SG_COOLDOWN_MS 600000
 #endif
+#ifndef SG_MANUAL_COOLDOWN_MS
+#define SG_MANUAL_COOLDOWN_MS 0
+#endif
 #ifndef SG_DAY_MS
 #define SG_DAY_MS 4000
 #endif
@@ -69,12 +72,14 @@
 #endif
 namespace runtime {
 constexpr int soilPin=34, lightPin=35, dhtPin=27, floatPin=26, relayPin=25;
-constexpr uint32_t telemetryMs=30000, serialMs=3000, sensorMs=1000, airMs=2500, pollMs=2000;
+constexpr uint32_t telemetryMs=30000, serialMs=3000, sensorMs=1000, airMs=2500, pollMs=1000;
 inline garden::Config config() {
   garden::Config c;
   c.commissioned=allowPump(SG_HARDWARE_VERIFIED,SG_CALIBRATION_VERIFIED);
   c.low=SG_LOW;c.high=SG_HIGH;c.aiCeiling=c.low; // AI cannot bypass the dry threshold until deliberately revised.
   c.pulseMs=SG_PULSE_MS;c.maxPulseMs=SG_MAX_PULSE_MS;c.cooldownMs=SG_COOLDOWN_MS;
+  c.manualCooldownMs=SG_MANUAL_COOLDOWN_MS;
+  c.manualUnlimitedStarts=true; // Manual operation is limited by time budget, not start count.
   c.maxDayMs=SG_DAY_MS;c.maxDayStarts=SG_DAY_STARTS;
   return c;
 }

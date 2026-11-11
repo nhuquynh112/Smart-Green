@@ -8,6 +8,46 @@ Sensor sample(uint32_t ms,float soil=20) { Sensor s; s.soil=soil;s.valid=true;s.
 Command water(uint32_t seq=1) { Command c; c.kind=Command::Kind::Water;c.seq=seq;c.durationMs=2000;c.issuedAt=1800000000;c.expiresAt=1800000060;return c; }
 int main() {
   const int64_t utc=1800000001;
+  { Store s; State st; st.mode=Mode::Auto;Controller c(config(),st,s,0);
+    Command stop;stop.kind=Command::Kind::Stop;stop.seq=1;stop.issuedAt=utc-100;stop.expiresAt=utc-50;
+    c.command(stop,2000,utc,sample(2000));assert(c.mode()==Mode::Off);
+    for(uint32_t t=3000;t<10000;t+=1000)c.tick(t,utc,sample(t));
+    assert(!c.pumping() && s.saved.mode==Mode::Off);
+    st.mode=Mode::Auto;Controller off(config(),st,s,0);
+    stop.kind=Command::Kind::SetMode;stop.mode=Mode::Off;
+    assert(std::string(off.command(stop,2000,0,sample(2000)))=="stopped");
+    assert(off.mode()==Mode::Off);
+
+  }
+  { Store s; State st; st.mode=Mode::Manual; auto cfg=config();
+    cfg.cooldownMs=600000;cfg.manualCooldownMs=0;assert(cfg.valid());
+    Controller c(cfg,st,s,0);assert(c.cooldownRemaining(0)==0);
+    assert(std::string(c.command(water(1),1,utc,sample(1)))=="started");
+    c.tick(2001,utc+2,sample(2001));assert(!c.pumping());
+    assert(std::string(c.command(water(2),2002,utc+2,sample(2002)))=="started");
+    st.mode=Mode::Auto;Controller automatic(cfg,st,s,0);
+    assert(automatic.cooldownRemaining(1)==599999);
+  }
+  { Store s; State st; st.mode=Mode::Manual; auto cfg=config();
+    cfg.cooldownMs=600000;cfg.manualCooldownMs=180000;
+    Controller c(cfg,st,s,0);
+    assert(c.cooldownRemaining(179999)==1);
+    assert(std::string(c.command(water(1),179999,utc,sample(179999)))=="cooldown");
+    assert(std::string(c.command(water(2),180000,utc,sample(180000)))=="started");
+    c.tick(182000,utc+2,sample(182000));
+    assert(c.cooldownRemaining(182000)==180000);
+    st.mode=Mode::Auto;Controller automatic(cfg,st,s,0);
+    assert(automatic.cooldownRemaining(180000)==420000);
+  }
+  { Store s; State st; Controller c(config(),st,s,100);
+    assert(c.cooldownRemaining(100)==1000);
+    assert(c.cooldownRemaining(600)==500);
+    assert(c.cooldownRemaining(1100)==0);
+  }
+  { Store s; State st; Controller c(config(),st,s,UINT32_MAX-499);
+    assert(c.cooldownRemaining(0)==500);
+    assert(c.cooldownRemaining(500)==0);
+  }
   { Store s; State st; st.mode=Mode::Manual; Config cfg=config();cfg.commissioned=false;
     Controller c(cfg,st,s,0);c.command(water(),2000,utc,sample(2000));assert(!c.pumping()); }
   { Store s; State st;st.mode=Mode::Manual;Controller c(config(),st,s,0);
@@ -52,5 +92,26 @@ int main() {
   { Store s;State st;st.mode=Mode::Off;Controller c(config(),st,s,0);
     for(uint32_t t=1000;t<10000;t+=1000) { c.tick(t,utc,sample(t)); }
     assert(!c.pumping()); }
+  { Store s;State st;st.mode=Mode::Manual;st.starts=20;st.windowStart=utc;
+    auto cfg=config();cfg.manualUnlimitedStarts=true;Controller c(cfg,st,s,0);
+    c.command(water(),2000,utc,sample(2000));assert(c.pumping()); }
+  { Store s;State st;st.mode=Mode::Manual;st.starts=20;st.windowStart=utc;
+    auto cfg=config();cfg.manualUnlimitedStarts=true;st.reservedMs=cfg.maxDayMs;Controller c(cfg,st,s,0);
+    c.command(water(),2000,utc,sample(2000));assert(!c.pumping()); }
+  { Store s;State st;st.mode=Mode::Auto;st.starts=20;st.windowStart=utc;
+    auto cfg=config();cfg.manualUnlimitedStarts=true;Controller c(cfg,st,s,0);
+    c.tick(2000,utc,sample(2000));c.tick(3000,utc+1,sample(3000));c.tick(4000,utc+2,sample(4000));assert(!c.pumping()); }
+  { struct DelayedOutput:PumpOutput {
+      bool on=false;bool start(uint32_t) override {on=true;return true;}
+      void off() override {on=false;}
+      uint32_t startedAt(uint32_t fallback) override {return fallback+40;}
+    } output;
+    Store s;State st;st.mode=Mode::Manual;Controller c(config(),st,s,0,&output);
+    auto cmd=water();cmd.durationMs=500;c.command(cmd,2000,utc,sample(2000));
+    c.tick(2040,utc,sample(2040));assert(output.on);
+    c.tick(2500,utc,sample(2500));assert(output.on);
+    c.tick(2540,utc,sample(2540));assert(!output.on);
+    assert(c.state().events[0].actualMs==500);
+  }
   std::cout<<"controller: all assertions passed\n";
 }

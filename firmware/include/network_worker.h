@@ -57,7 +57,8 @@ inline int request(const String& path,const char* body,String& response) {
   http.setConnectTimeout(1500);http.setTimeout(1500);http.setFollowRedirects(HTTPC_DISABLE_FOLLOW_REDIRECTS);
   http.addHeader("X-API-Key",SG_API_KEY);http.addHeader("Content-Type","application/json");
   int code=body?http.POST(String(body)):http.GET();
-  if(code>0) {
+  // A 204 response has no body; reading it can wait for the keep-alive timeout.
+  if(code>0 && code!=204) {
     if(http.getSize()>4096) code=-2;
     else {Body sink;int read=http.writeToStream(&sink);if(read<0 || sink.overflow) code=-2;else response=sink.text;}
   }
