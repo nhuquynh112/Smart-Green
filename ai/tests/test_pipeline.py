@@ -109,3 +109,28 @@ def test_fractional_event_counts_rejected():
     raw.loc[0,'water_event_count']=0.5
     with pytest.raises(ValueError,match='integer'):
         validate(raw)
+
+
+@pytest.mark.parametrize('kind', ['empty_directory', 'candidate', 'file', 'broken_symlink'])
+def test_training_refuses_existing_output_without_touching_it(tmp_path, kind):
+    output = tmp_path / 'existing'
+    if kind == 'file':
+        output.write_bytes(b'keep')
+    elif kind == 'broken_symlink':
+        output.symlink_to(tmp_path / 'missing')
+    else:
+        output.mkdir()
+        if kind == 'candidate':
+            (output / 'candidate.joblib').write_bytes(b'keep')
+    # Reject before even reading the input or fitting a model.
+    with pytest.raises(FileExistsError, match='Choose a new run directory'):
+        train(tmp_path / 'missing.csv', output)
+    if kind == 'candidate':
+        assert (output / 'candidate.joblib').read_bytes() == b'keep'
+        assert list(output.iterdir()) == [output / 'candidate.joblib']
+    elif kind == 'file':
+        assert output.read_bytes() == b'keep'
+    elif kind == 'broken_symlink':
+        assert output.is_symlink()
+    else:
+        assert list(output.iterdir()) == []

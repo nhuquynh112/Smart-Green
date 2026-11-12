@@ -1,0 +1,85 @@
+{
+  "feature_version": "v2-watering-events",
+  "features": [
+    "soil_pct",
+    "soil_lag_5",
+    "soil_lag_15",
+    "slope_15",
+    "temperature_c",
+    "humidity_pct",
+    "minutes_since_water",
+    "hour_sin",
+    "hour_cos"
+  ],
+  "horizon_minutes": 60,
+  "quality": {
+    "input_rows": 530,
+    "grid_minutes": 530,
+    "usable_windows": 453,
+    "missing_minutes": 0,
+    "watering_counter_increments": 0,
+    "device_id": "garden-01",
+    "calibration_id": "soil-2511-979",
+    "data_origin": "real",
+    "time_basis": "device_timestamp",
+    "scope": "Only complete dry history and futures with no additional watering"
+  },
+  "versions": {
+    "python": "3.12.3",
+    "numpy": "2.5.4",
+    "pandas": "3.1.1",
+    "sklearn": "1.9.1",
+    "joblib": "1.6.0"
+  },
+  "dataset_sha256": "3058d51a6dfe47415dec3039d4f9db3bf89edc0fabcc9d05b890caedb6cdb594",
+  "split": {
+    "train": {
+      "rows": 211,
+      "first": "2026-11-11T05:30:00+00:00",
+      "last": "2026-11-11T09:00:00+00:00",
+      "last_label": "2026-11-11T10:00:00+00:00"
+    },
+    "validation": {
+      "rows": 31,
+      "first": "2026-11-11T10:01:00+00:00",
+      "last": "2026-11-11T10:31:00+00:00",
+      "last_label": "2026-11-11T11:31:00+00:00"
+    },
+    "test": {
+      "rows": 91,
+      "first": "2026-11-11T11:32:00+00:00",
+      "last": "2026-11-11T13:02:00+00:00",
+      "last_label": "2026-11-11T14:02:00+00:00"
+    }
+  },
+  "validation_mae_percentage_points": {
+    "persistence": 0.39901448387096766,
+    "linear_extrapolation": 0.9233131612903229,
+    "linear_regression": 2.560559829441784,
+    "random_forest": 0.3740696042724307
+  },
+  "test_mae_percentage_points": {
+    "persistence": 0.49385987362637374,
+    "linear_extrapolation": 1.0526351373626375,
+    "linear_regression": 14.70726487874239,
+    "random_forest": 0.8016506669493251
+  },
+  "falling_soil_test": {
+    "definition": "target_soil_pct < current_soil_pct within complete no-additional-watering windows",
+    "rows": 37,
+    "mae_percentage_points": {
+      "persistence": 0.8397431081081081,
+      "linear_extrapolation": 1.571872108108108,
+      "linear_regression": 17.511764926493285,
+      "random_forest": 0.8060657761824213
+    },
+    "limitation": "Retrospective subset based on observed target; not a runtime trigger or independent cycle count"
+  },
+  "selected_by_validation": "random_forest",
+  "automatic_irrigation_approved": false,
+  "limitations": [
+    "Conditional dry-down evaluation only; not overall control effectiveness",
+    "Time-correlated windows are not independent trials",
+    "Real hardware evaluation and manual promotion review are required"
+  ]
+}

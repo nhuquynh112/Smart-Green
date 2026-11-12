@@ -28,6 +28,8 @@ def predictions(name, estimator, rows, horizon):
 
 
 def train(csv_path: Path, output: Path, horizon: int = 30):
+    if output.exists() or output.is_symlink():
+        raise FileExistsError(f"Training output already exists: {output}. Choose a new run directory.")
     raw = pd.read_csv(csv_path)
     rows, quality = supervised(raw, horizon)
     fit, val, test = chronological_split(rows)
@@ -71,7 +73,9 @@ def train(csv_path: Path, output: Path, horizon: int = 30):
                         "Time-correlated windows are not independent trials",
                         "Real hardware evaluation and manual promotion review are required"],
     }
-    output.mkdir(parents=True, exist_ok=True)
+    # Exclusive creation also protects against another run claiming this path
+    # while fitting. A partial export remains visible and cannot be overwritten.
+    output.mkdir(parents=True, exist_ok=False)
     (output/"report.json").write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
     exported.to_csv(output/"test_predictions.csv", index=False)
     joblib.dump({"model": models[selected], "metadata": report}, output/"candidate.joblib")
