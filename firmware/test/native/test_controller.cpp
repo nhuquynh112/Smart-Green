@@ -113,5 +113,44 @@ int main() {
     c.tick(2540,utc,sample(2540));assert(!output.on);
     assert(c.state().events[0].actualMs==500);
   }
+  { // Independent budgets survive ACK removal and reboot.
+    Store store;State st;st.mode=Mode::Manual;auto cfg=config();
+    cfg.separateManualQuota=true;cfg.manualUnlimitedStarts=true;cfg.manualCooldownMs=0;
+    st.windowStart=utc;st.starts=cfg.maxDayStarts;st.reservedMs=cfg.maxDayMs;
+    Controller c(cfg,st,store,0);
+    assert(std::string(c.command(water(),2000,utc,sample(2000)))=="started");
+    assert(c.state().reservedMs==cfg.maxDayMs && c.state().starts==cfg.maxDayStarts);
+    assert(c.state().manualReservedMs==2000 && c.state().manualStarts==1);
+    c.tick(4000,utc+2,sample(4000));assert(c.acknowledgeEvent(1));
+    Controller reboot(cfg,store.saved,store,0);
+    assert(reboot.state().manualReservedMs==2000 && reboot.state().reservedMs==cfg.maxDayMs);
+    State other;other.mode=Mode::Auto;other.manualWindowStart=utc;other.manualReservedMs=cfg.maxDayMs;
+    Controller automatic(cfg,other,store,0);
+    automatic.tick(2000,utc,sample(2000));automatic.tick(3000,utc+1,sample(3000));automatic.tick(4000,utc+2,sample(4000));
+    assert(automatic.pumping() && automatic.state().reservedMs==cfg.pulseMs);
+    assert(automatic.state().manualReservedMs==cfg.maxDayMs);
+    other.mode=Mode::Manual;Controller full(cfg,other,store,0);
+    assert(std::string(full.command(water(),2000,utc,sample(2000)))=="quota");
+  }
+  { LegacyState old;old.mode=Mode::Auto;old.lastCommand=42;old.nextEvent=9;
+    old.windowStart=utc;old.reservedMs=6000;old.starts=7;old.lastWaterAt=utc;
+    old.eventCount=1;old.events[0].id=8;old.events[0].reason=Reason::Running;
+    auto migrated=migrateState(old);
+    assert(migrated.mode==Mode::Off && migrated.lastCommand==42 && migrated.nextEvent==9);
+    assert(migrated.manualReservedMs==6000 && migrated.reservedMs==6000);
+    assert(migrated.manualWindowStart==utc && migrated.manualStarts==7 && migrated.starts==7);
+    Store store;Controller reboot(config(),migrated,store,0);
+    assert(!reboot.fault() && reboot.state().events[0].reason==Reason::Reboot);
+    old.magic=0;assert(migrateState(old).magic==0);
+  }
+  { // Expiring one bucket does not refund the other bucket.
+    Store store;State st;st.mode=Mode::Manual;auto cfg=config();cfg.separateManualQuota=true;cfg.manualCooldownMs=0;
+    st.manualWindowStart=utc-86400;st.manualReservedMs=cfg.maxDayMs;st.manualStarts=cfg.maxDayStarts;
+    st.windowStart=utc;st.reservedMs=6000;st.starts=3;
+    Controller c(cfg,st,store,0);
+    assert(std::string(c.command(water(),2000,utc,sample(2000)))=="started");
+    assert(c.state().manualReservedMs==2000 && c.state().manualStarts==1);
+    assert(c.state().reservedMs==6000 && c.state().starts==3 && c.state().windowStart==utc);
+  }
   std::cout<<"controller: all assertions passed\n";
 }

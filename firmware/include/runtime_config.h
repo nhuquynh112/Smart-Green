@@ -79,6 +79,7 @@ inline garden::Config config() {
   c.low=SG_LOW;c.high=SG_HIGH;c.aiCeiling=c.low; // AI cannot bypass the dry threshold until deliberately revised.
   c.pulseMs=SG_PULSE_MS;c.maxPulseMs=SG_MAX_PULSE_MS;c.cooldownMs=SG_COOLDOWN_MS;
   c.manualCooldownMs=SG_MANUAL_COOLDOWN_MS;
+  c.separateManualQuota=true;
   c.manualUnlimitedStarts=true; // Manual operation is limited by time budget, not start count.
   c.maxDayMs=SG_DAY_MS;c.maxDayStarts=SG_DAY_STARTS;
   return c;

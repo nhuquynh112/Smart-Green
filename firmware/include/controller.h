@@ -9,6 +9,7 @@ enum class Source : uint8_t { Rule, Manual, AI };
 struct Config {
   bool commissioned = false;
   bool manualUnlimitedStarts = false;
+  bool separateManualQuota = false;
   float low = 30, high = 45, aiCeiling = 40;
   uint32_t pulseMs = 2000, maxPulseMs = 3000, cooldownMs = 600000;
   uint32_t manualCooldownMs = UINT32_MAX; // Sentinel uses cooldownMs; zero disables manual cooldown.
@@ -33,7 +34,7 @@ struct Event {
   Source source = Source::Rule;
   Reason reason = Reason::Running;
 };
-struct State {
+struct LegacyState {
   uint32_t magic = 0x53473101, lastCommand = 0, nextEvent = 1;
   int64_t windowStart = 0, lastWaterAt = 0;
   uint32_t reservedMs = 0, starts = 0;
@@ -41,6 +42,24 @@ struct State {
   uint8_t eventCount = 0;
   Event events[32]{};
 };
+// v2 preserves the complete v1 prefix, including unacknowledged events.
+struct State : LegacyState {
+  int64_t manualWindowStart = 0;
+  uint32_t manualReservedMs = 0, manualStarts = 0;
+  State() { magic=0x53473102; }
+};
+inline State migrateState(const LegacyState& old) {
+  State next;
+  static_cast<LegacyState&>(next)=old;
+  if(old.magic!=0x53473101 || old.eventCount>32 || static_cast<unsigned>(old.mode)>2 || !old.nextEvent){next.magic=0;return next;}
+  next.magic=0x53473102;
+  // Source attribution of acknowledged history is unavailable. Reserve old
+  // usage in BOTH budgets until that window expires; never silently refund it.
+  next.manualWindowStart=old.windowStart;
+  next.manualReservedMs=old.reservedMs;next.manualStarts=old.starts;
+  next.mode=Mode::Off;
+  return next;
+}
 struct Storage {
   virtual bool save(const State&) = 0;
   virtual ~Storage() = default;
@@ -64,7 +83,7 @@ class Controller {
  public:
   Controller(Config cfg, State saved, Storage& storage, uint32_t now, PumpOutput* output = nullptr)
       : cfg_(cfg), state_(saved), storage_(storage), output_(output), stoppedMs_(now) {
-    if (state_.magic != 0x53473101 || state_.eventCount > 32
+    if (state_.magic != 0x53473102 || state_.eventCount > 32
         || static_cast<unsigned>(state_.mode) > 2 || state_.nextEvent == 0) {
       fault_ = true;
       return;
@@ -151,17 +170,19 @@ class Controller {
     if (!fresh(ms,s) || !s.tankOK || s.soil >= cfg_.high) return "sensor_tank_or_wet";
     if (cooldownRemaining(ms)) return "cooldown";
     if (!duration || duration > cfg_.maxPulseMs) return "duration_limit";
-    if (utc < 1700000000 || utc < state_.windowStart || utc < state_.lastWaterAt) return "clock";
-    if (!state_.windowStart || utc-state_.windowStart >= 86400) {
-      state_.windowStart=utc; state_.reservedMs=0; state_.starts=0;
-    }
-    if ((!(source==Source::Manual && cfg_.manualUnlimitedStarts) && state_.starts >= cfg_.maxDayStarts) || state_.reservedMs > cfg_.maxDayMs
-        || duration > cfg_.maxDayMs-state_.reservedMs) return "quota";
+    const bool manual=cfg_.separateManualQuota && source==Source::Manual;
+    auto& window=manual?state_.manualWindowStart:state_.windowStart;
+    auto& reserved=manual?state_.manualReservedMs:state_.reservedMs;
+    auto& starts=manual?state_.manualStarts:state_.starts;
+    if (utc < 1700000000 || utc < window || utc < state_.lastWaterAt) return "clock";
+    if (!window || utc-window >= 86400) { window=utc;reserved=0;starts=0; }
+    if ((!(source==Source::Manual && cfg_.manualUnlimitedStarts) && starts >= cfg_.maxDayStarts)
+        || reserved > cfg_.maxDayMs || duration > cfg_.maxDayMs-reserved) return "quota";
     if (state_.eventCount == 32 || state_.nextEvent == UINT32_MAX) return "event_log_full";
     Event& e=state_.events[state_.eventCount++];
     e=Event{}; e.id=state_.nextEvent++; e.commandSeq=seq; e.plannedMs=duration;
     e.startedAt=utc; e.source=source;
-    state_.lastWaterAt=utc; state_.reservedMs+=duration; ++state_.starts;
+    state_.lastWaterAt=utc; reserved+=duration; ++starts;
     // Commit reservation and event BEFORE enabling the physical output.
     if (!persist()) return "storage_fault";
     durationMs_=duration; startedMs_=ms; pumping_=true; dryCount_=0;

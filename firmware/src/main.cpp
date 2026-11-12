@@ -49,16 +49,20 @@ void publish(uint32_t now) {
   JsonDocument j;
   j["schema_version"]=1;j["build_stage"]=runtime::telemetryOnly?"runtime_telemetry_only":"runtime_unverified";
   j["device_id"]=SG_DEVICE_ID;j["boot_id"]=bootId;j["sample_seq"]=++sequence;
-  j["control_revision"]="reviewed-controls-v4";
+  j["control_revision"]="separate-quota-v5";
   const auto limits=runtime::config();
   const auto& state=controller->state();
   const int64_t utcNow=net::utc();
-  const bool quotaExpired=utcNow>=1700000000 && state.windowStart && utcNow-state.windowStart>=86400;
+  const bool manual=limits.separateManualQuota && controller->mode()==garden::Mode::Manual;
+  const int64_t quotaWindow=manual?state.manualWindowStart:state.windowStart;
+  const bool quotaExpired=utcNow>=1700000000 && quotaWindow && utcNow-quotaWindow>=86400;
+  j["quota_scope"]=manual?"MANUAL":"AUTO";
+  j["quota_policy"]="separate-v2";
   j["max_pulse_ms"]=limits.maxPulseMs;
   j["quota_limit_ms"]=limits.maxDayMs;j["quota_limit_starts"]=(controller->mode()==garden::Mode::Manual && limits.manualUnlimitedStarts)?0:limits.maxDayStarts; // zero: no count limit
-  j["quota_reserved_ms"]=quotaExpired?0:state.reservedMs;
-  j["quota_starts"]=quotaExpired?0:state.starts;
-  j["quota_window_ends_at"]=state.windowStart?state.windowStart+86400:0;
+  j["quota_reserved_ms"]=quotaExpired?0:(manual?state.manualReservedMs:state.reservedMs);
+  j["quota_starts"]=quotaExpired?0:(manual?state.manualStarts:state.starts);
+  j["quota_window_ends_at"]=quotaWindow?quotaWindow+86400:0;
   j["control_uptime_ms"]=now;
   j["cooldown_remaining_ms"]=controller->cooldownRemaining(now);
   j["uptime_ms"]=reading.soil.sampledMs;serializeTime(j,clockFault?0:reading.measuredAt);
@@ -120,8 +124,12 @@ void setup() {
   garden::State state;
   if(!storage.ready) state.magic=0;
   else if(storage.prefs.isKey("state")) {
-    if(storage.prefs.getBytesLength("state")!=sizeof(state)
-       || storage.prefs.getBytes("state",&state,sizeof(state))!=sizeof(state)) state.magic=0;
+    const size_t size=storage.prefs.getBytesLength("state");
+    if(size==sizeof(garden::LegacyState)) {
+      garden::LegacyState old;
+      if(storage.prefs.getBytes("state",&old,sizeof(old))!=sizeof(old))state.magic=0;
+      else {state=garden::migrateState(old);if(state.magic && !storage.save(state))state.magic=0;}
+    } else if(size!=sizeof(state) || storage.prefs.getBytes("state",&state,sizeof(state))!=sizeof(state))state.magic=0;
   }
   garden::Config cfg=runtime::config();
   cfg.commissioned=cfg.commissioned && sensors::calibrated(SG_DRY_RAW,SG_WET_RAW) && outputReady;
