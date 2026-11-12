@@ -9,7 +9,8 @@ import os
 import re
 import secrets
 import sys
-from datetime import datetime, timezone
+import threading
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -23,7 +24,9 @@ AI_PACKAGE = ROOT / "ai"
 if str(AI_PACKAGE) not in sys.path:
     sys.path.insert(0, str(AI_PACKAGE))
 
-from backend.ai_service import make_recent_minute_dataframe, rebase_demo_window, run_prediction, STATIC_DEMO_BOOT_ID
+from backend.ai_service import (AI_UNAVAILABLE_DATA, AI_UNAVAILABLE_HISTORY, AI_UNAVAILABLE_MODEL,
+                                make_recent_minute_dataframe, rebase_demo_window, run_prediction,
+                                STATIC_DEMO_BOOT_ID)
 from backend.database import Database, canonical_json, hash_key, utc_iso
 
 
@@ -226,7 +229,7 @@ def create_app(db: Database | None = None, bundle: dict | None = None,
                                      (history_complete, device_id))
             device = database.one("SELECT watering_history_complete FROM devices WHERE device_id=?", (device_id,))
             if not device or not device["watering_history_complete"]:
-                result = {"status": "unavailable", "reason": "watering history is not confirmed complete", "can_trigger_pump": False}
+                result = {"status": "unavailable", "reason": AI_UNAVAILABLE_HISTORY, "can_trigger_pump": False}
             else:
                 quality = bundle.get("metadata", {}).get("quality", {})
                 is_static_model_demo = (device_id == quality.get("device_id")
@@ -241,12 +244,12 @@ def create_app(db: Database | None = None, bundle: dict | None = None,
                     rows = database.all("SELECT * FROM telemetry WHERE device_id=? AND measured_at IS NOT NULL ORDER BY measured_at DESC LIMIT 240", (device_id,))
                 rows.reverse()
                 if is_static_model_demo:
-                    events = database.all("SELECT * FROM watering_events WHERE device_id=? AND reason IN ('Manual','Scheduled') ORDER BY started_at", (device_id,))
+                    events = database.all("SELECT * FROM watering_events WHERE device_id=? AND reason IN ('Manual','Scheduled','ManualHandWatering') ORDER BY started_at", (device_id,))
                 else:
                     events = database.all("SELECT * FROM watering_events WHERE device_id=? ORDER BY started_at", (device_id,))
                 recent = make_recent_minute_dataframe(device_id, rows, events)
                 if recent.empty:
-                    result = {"status": "unavailable", "reason": "no valid measured telemetry history", "can_trigger_pump": False}
+                    result = {"status": "unavailable", "reason": AI_UNAVAILABLE_DATA.format(minutes=0), "can_trigger_pump": False}
                 else:
                     prediction_now = datetime.now(timezone.utc)
                     if is_static_model_demo:
@@ -400,13 +403,46 @@ def create_app(db: Database | None = None, bundle: dict | None = None,
         return result
 
     @app.get("/api/v1/web/devices/{device_id}/dashboard")
-    def web_dashboard(device_id: str):
+    def web_dashboard(device_id: str, boot_id: str | None = Query(default=None, max_length=128),
+                     hours: str = Query(default="1h")):
         device = database.one("SELECT device_id,display_name,is_demo,connected,last_seen_at,calibration_id,dry_raw,wet_raw,watering_history_complete,last_command_seq FROM devices WHERE device_id=?", (device_id,))
         if not device:
             raise HTTPException(404, detail="Không tìm thấy thiết bị")
-        rows = database.all("SELECT * FROM telemetry WHERE device_id=? ORDER BY received_at DESC LIMIT 180", (device_id,))
+        if hours not in {"1h", "6h", "24h", "all"}:
+            raise HTTPException(422, detail="hours phải là 1h, 6h, 24h hoặc all")
+        boot_rows = database.all("SELECT boot_id,MAX(received_at) AS last_received_at FROM telemetry WHERE device_id=? GROUP BY boot_id ORDER BY last_received_at DESC", (device_id,))
+        boot_ids = [row["boot_id"] for row in boot_rows]
+        if boot_id is not None and boot_id not in boot_ids:
+            raise HTTPException(404, detail="Không tìm thấy phiên thu dữ liệu của thiết bị")
+        selected_boot = boot_id if boot_id in boot_ids else (boot_ids[0] if boot_ids else None)
+        where = ["device_id=?"]
+        params: list[Any] = [device_id]
+        if selected_boot is not None:
+            where.append("boot_id=?")
+            params.append(selected_boot)
+        hour_seconds = {"1h": 3600, "6h": 21600, "24h": 86400}
+        if hours != "all":
+            cutoff = utc_iso(datetime.now(timezone.utc) - timedelta(seconds=hour_seconds[hours]))
+            where.append("received_at>=?")
+            params.append(cutoff)
+        rows = database.all("SELECT * FROM telemetry WHERE " + " AND ".join(where) + " ORDER BY received_at DESC, sample_seq DESC LIMIT 50000", tuple(params))
         rows.reverse()
-        latest = rows[-1] if rows else None
+        latest_where = "device_id=?" + (" AND boot_id=?" if selected_boot is not None else "")
+        latest_params = (device_id, selected_boot) if selected_boot is not None else (device_id,)
+        latest = database.one("SELECT * FROM telemetry WHERE " + latest_where + " ORDER BY received_at DESC,sample_seq DESC LIMIT 1", latest_params)
+        sequences = sorted({int(row["sample_seq"]) for row in rows if row.get("boot_id") == selected_boot})
+        missing_sample_seqs: list[int] = []
+        missing_sample_count = 0
+        for previous, current in zip(sequences, sequences[1:]):
+            gap = current - previous - 1
+            if gap > 0:
+                missing_sample_count += gap
+                if len(missing_sample_seqs) < 50:
+                    missing_sample_seqs.extend(range(previous + 1, min(current, previous + 51)))
+        # The latest payload is returned separately for firmware interlocks. Historical chart
+        # points do not need to repeat the raw JSON payload for every sample.
+        for row in rows:
+            row.pop("payload", None)
         now_unix = int(datetime.now(timezone.utc).timestamp())
         with database.transaction() as conn:
             database.execute_on(conn, "UPDATE commands SET status='EXPIRED' WHERE device_id=? AND status='PENDING' AND expires_at<=?",
@@ -422,10 +458,10 @@ def create_app(db: Database | None = None, bundle: dict | None = None,
         evaluation = _model_evaluation(app.state.ai_bundle)
         now_unix = int(datetime.now(timezone.utc).timestamp())
         stats_row = database.one("""SELECT
-            COUNT(CASE WHEN actual_ms IS NOT NULL AND reason<>'Reboot' THEN 1 END) AS total_events,
-            COUNT(CASE WHEN actual_ms IS NOT NULL AND reason<>'Reboot'
+            COUNT(CASE WHEN (actual_ms IS NOT NULL AND reason<>'Reboot') OR reason='ManualHandWatering' THEN 1 END) AS total_events,
+            COUNT(CASE WHEN ((actual_ms IS NOT NULL AND reason<>'Reboot') OR reason='ManualHandWatering')
                        AND COALESCE(ended_at,started_at)>=? AND COALESCE(ended_at,started_at)<=? THEN 1 END) AS events_last_24h,
-            COUNT(CASE WHEN actual_ms IS NOT NULL AND reason<>'Reboot' AND upper(source)='MANUAL' THEN 1 END) AS manual_count,
+            COUNT(CASE WHEN ((actual_ms IS NOT NULL AND reason<>'Reboot') OR reason='ManualHandWatering') AND upper(source) IN ('MANUAL','MANUAL_CARE') THEN 1 END) AS manual_count,
             COUNT(CASE WHEN actual_ms IS NOT NULL AND reason<>'Reboot' AND upper(source) IN ('AI','RULE','SCHEDULED') THEN 1 END) AS auto_count,
             COALESCE(SUM(CASE WHEN actual_ms IS NOT NULL AND reason<>'Reboot' THEN actual_ms ELSE 0 END),0) AS total_actual_ms
             FROM watering_events WHERE device_id=?""", (now_unix-86400, now_unix, device_id))
@@ -458,7 +494,10 @@ def create_app(db: Database | None = None, bundle: dict | None = None,
         }
         return {"device": device, "latest": latest, "history": rows, "commands": commands,
                 "watering_events": events, "latest_ai": predictions[0] if predictions else None,
-                "ai_history": predictions, "model_evaluation": evaluation, "watering_stats": watering_stats}
+                "ai_history": predictions, "model_evaluation": evaluation, "watering_stats": watering_stats,
+                "boot_ids": boot_ids, "selected_boot_id": selected_boot, "hours": hours,
+                "sample_count": len(rows), "missing_sample_count": missing_sample_count,
+                "missing_sample_seqs": missing_sample_seqs}
 
     @app.get("/api/v1/web/devices/{device_id}/export-csv")
     def web_export_csv(device_id: str):
@@ -512,6 +551,14 @@ def create_app(db: Database | None = None, bundle: dict | None = None,
             device_state = database.one_on(conn, "SELECT last_command_seq FROM devices WHERE device_id=?" + lock, (device_id,))
             if not device_state:
                 raise HTTPException(404, detail="Không tìm thấy thiết bị")
+            latest_safety = database.one_on(conn, "SELECT payload,build_stage FROM telemetry WHERE device_id=? ORDER BY received_at DESC LIMIT 1", (device_id,))
+            if latest_safety:
+                safety_payload = _unpack_json(latest_safety.get("payload")) or {}
+                telemetry_only = (safety_payload.get("telemetry_only") is True
+                                  or latest_safety.get("build_stage") == "bringup"
+                                  or safety_payload.get("build_stage") == "bringup")
+                if telemetry_only:
+                    raise HTTPException(400, detail="Thiết bị đang ở chế độ chỉ thu dữ liệu (telemetry_only=true), không nhận lệnh điều khiển bơm")
             now = int(datetime.now(timezone.utc).timestamp())
             if request_id is not None:
                 previous = database.one_on(conn, "SELECT * FROM commands WHERE device_id=? AND request_id=?", (device_id, request_id))
@@ -614,7 +661,56 @@ def create_app(db: Database | None = None, bundle: dict | None = None,
             raise HTTPException(400, detail="watering_history_complete phải là boolean")
         return make_prediction(device_id, history_complete)
 
+    @app.post("/api/v1/web/devices/{device_id}/manual-watering")
+    def web_manual_watering(device_id: str, body: dict, username: str = Depends(_admin_auth)):
+        started = _parse_time(body.get("started_at"), "started_at")
+        if started is None:
+            raise HTTPException(422, detail="started_at là bắt buộc")
+        water_ml = body.get("water_ml")
+        if water_ml is not None and (type(water_ml) not in (int, float) or not math.isfinite(water_ml) or water_ml <= 0):
+            raise HTTPException(422, detail="water_ml phải là số dương hoặc null")
+        note = body.get("note", "")
+        if not isinstance(note, str) or len(note) > 500:
+            raise HTTPException(422, detail="note phải là chuỗi tối đa 500 ký tự")
+        extra_keys = set(body) - {"started_at", "water_ml", "note"}
+        if extra_keys:
+            raise HTTPException(422, detail="Có trường không được hỗ trợ")
+        payload = {"schema_version": 1, "device_id": device_id, "started_at": int(started.timestamp()),
+                   "source": "MANUAL_CARE", "reason": "ManualHandWatering", "water_ml": water_ml,
+                   "note": note.strip(), "recorded_by": username}
+        with database.transaction() as conn:
+            lock = " FOR UPDATE" if not database.sqlite else ""
+            device = database.one_on(conn, "SELECT device_id FROM devices WHERE device_id=?" + lock, (device_id,))
+            if not device:
+                raise HTTPException(404, detail="Không tìm thấy thiết bị")
+            previous = database.one_on(conn, "SELECT MAX(event_id) AS event_id FROM watering_events WHERE device_id=?", (device_id,))
+            event_id = int(previous.get("event_id") or 0) + 1
+            payload["event_id"] = event_id
+            payload_sql = _json_for_db(database)
+            database.execute_on(conn, f"INSERT INTO watering_events(device_id,event_id,schema_version,command_seq,started_at,planned_ms,actual_ms,ended_at,source,reason,received_at,payload) VALUES(?,?,1,0,?,NULL,NULL,NULL,'MANUAL_CARE','ManualHandWatering',?,{payload_sql})",
+                                (device_id, event_id, payload["started_at"], utc_iso(), canonical_json(payload)))
+        return JSONResponse({"event_id": event_id, "started_at": payload["started_at"],
+                             "source": "MANUAL_CARE", "reason": "ManualHandWatering",
+                             "planned_ms": None, "actual_ms": None}, status_code=201)
+
     return app
 
 
-app = create_app()
+class _LazyApplication:
+    """Delay database access until serving; imports must not touch DATABASE_URL."""
+    def __init__(self):
+        self._instance = None
+        self._lock = threading.Lock()
+
+    def _get(self):
+        if self._instance is None:
+            with self._lock:
+                if self._instance is None:
+                    self._instance = create_app()
+        return self._instance
+
+    async def __call__(self, scope, receive, send):
+        await self._get()(scope, receive, send)
+
+
+app = _LazyApplication()

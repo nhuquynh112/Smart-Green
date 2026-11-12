@@ -4,12 +4,12 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 function setup(sharedStorage=new Map()){
   const elements=new Map();
-  const el=id=>{if(!elements.has(id))elements.set(id,{value:'',textContent:'',classList:{add(){},remove(){}}});return elements.get(id);};
+  const el=id=>{if(!elements.has(id)){const classes=new Set();elements.set(id,{value:'',textContent:'',className:'',innerHTML:'',classList:{add(x){classes.add(x);},remove(x){classes.delete(x);},toggle(x,on){if(on)classes.add(x);else classes.delete(x);return on;},contains(x){return classes.has(x);}}});}return elements.get(id);};
   let posts=0, finishPost, chart, getError=false, hangGet=false;
   const requests=[],timers=new Map();let timerId=0;
   function Chart(element,config){Object.assign(this,config);this.update=()=>{};chart=this;}
   const data={device:{device_id:'garden',connected:true,last_seen_at:new Date().toISOString()},latest:{mode:'OFF',water_ok:true,soil_valid:true,clock_ready:true,commissioned:true,received_at:new Date().toISOString(),measured_at:new Date().toISOString()},commands:[]};
-  const context={Uint8Array,crypto:require('node:crypto').webcrypto,localStorage:{getItem:k=>sharedStorage.get(k)||null,setItem:(k,v)=>sharedStorage.set(k,v),removeItem:k=>sharedStorage.delete(k)},document:{getElementById:el,activeElement:null},window:{Chart},Chart,sessionStorage:{getItem:()=> 'test',setItem(){},removeItem(){}},Date,Number,Math,JSON,encodeURIComponent,AbortController,setTimeout(fn){timers.set(++timerId,fn);return timerId;},clearTimeout(id){timers.delete(id);},setInterval(){},fetch:async(url,options)=>{
+  const context={Uint8Array,crypto:require('node:crypto').webcrypto,localStorage:{getItem:k=>sharedStorage.get(k)||null,setItem:(k,v)=>sharedStorage.set(k,v),removeItem:k=>sharedStorage.delete(k)},document:{getElementById:el,activeElement:null},window:{Chart},Chart,sessionStorage:{getItem:()=> 'test',setItem(){},removeItem(){}},Date,Number,Math,JSON,URLSearchParams,encodeURIComponent,AbortController,setTimeout(fn){timers.set(++timerId,fn);return timerId;},clearTimeout(id){timers.delete(id);},setInterval(){},fetch:async(url,options)=>{
     if(options.method==='POST'){posts++;const seq=posts;await new Promise((resolve,reject)=>{finishPost=resolve;requests.push({resolve,reject,body:JSON.parse(options.body)});options.signal.addEventListener('abort',()=>reject(new Error('aborted')));});return {ok:true,status:201,json:async()=>({command_seq:seq})};}
     if(hangGet)await new Promise((resolve,reject)=>options.signal.addEventListener('abort',()=>reject(new Error('aborted'))));
     if(getError)throw new Error('NetworkError');
@@ -47,6 +47,11 @@ test('cooldown telemetry locks watering, then expires without another click',()=
  const s=setup();s.data.latest.mode='MANUAL';s.data.latest.received_at=new Date().toISOString();s.data.latest.payload={cooldown_remaining_ms:600000};s.api.render(s.data);
  assert.equal(s.el('waterBtn').disabled,true);assert.match(s.el('waterLock').textContent,/Đang nghỉ/);
  s.data.latest.payload.cooldown_remaining_ms=0;s.api.render(s.data);assert.equal(s.el('waterBtn').disabled,false);
+});
+test('telemetry-only firmware displays lock and disables all pump controls',()=>{
+ const s=setup();s.data.latest.mode='MANUAL';s.data.latest.payload={telemetry_only:true};s.api.render(s.data);
+ assert.equal(s.el('waterBtn').disabled,true);assert.equal(s.el('modeBtn').disabled,true);assert.equal(s.el('stopBtn').disabled,true);
+ assert.equal(s.el('telemetryOnlyBanner').classList.contains('show'),true);
 });
 test('a newer mode ACK updates controls without waiting for periodic telemetry',()=>{
  const s=setup();s.data.latest.received_at=new Date().toISOString();s.data.latest.uptime_ms=60000;s.data.latest.last_command_seq=1;
@@ -93,7 +98,7 @@ test('chart excludes overnight history and retains a single current sample',()=>
  s.api.render(s.data);const chart=s.chart();
  assert.equal(chart.data.datasets[0].data.length,1);
  assert.equal(chart.data.datasets[0].data[0].x,end);
- assert.equal(chart.options.scales.x.min,end-1800000);
+ assert.equal(chart.options.scales.x.min,end-3600000);
  assert.equal(chart.options.scales.x.max,end);
 });
 

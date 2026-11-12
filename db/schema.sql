@@ -90,31 +90,44 @@ CREATE TABLE IF NOT EXISTS watering_events (
     schema_version integer NOT NULL DEFAULT 1 CHECK (schema_version = 1),
     command_seq bigint NOT NULL DEFAULT 0,
     started_at bigint NOT NULL,
-    planned_ms integer NOT NULL CHECK (planned_ms > 0),
+    planned_ms integer CHECK (planned_ms IS NULL OR planned_ms >= 0),
     actual_ms integer CHECK (actual_ms IS NULL OR actual_ms >= 0),
     ended_at bigint,
-    source text NOT NULL CHECK (source IN ('AI','MANUAL','RULE')),
-    reason text NOT NULL CHECK (reason IN ('Running','Duration','Wet','Sensor','Tank','Stop','Reboot','Guard','Manual','Scheduled','ManualCheck')),
+    source text NOT NULL CHECK (source IN ('AI','MANUAL','RULE','MANUAL_CARE')),
+    reason text NOT NULL CHECK (reason IN ('Running','Duration','Wet','Sensor','Tank','Stop','Reboot','Guard','Manual','Scheduled','ManualCheck','ManualHandWatering')),
     received_at timestamptz NOT NULL DEFAULT now(),
     payload jsonb NOT NULL,
     PRIMARY KEY (device_id, event_id),
-    CHECK (reason IN ('Running','Duration','Wet','Sensor','Tank','Stop','Reboot','Guard','Manual','Scheduled','ManualCheck'))
+    CHECK (reason IN ('Running','Duration','Wet','Sensor','Tank','Stop','Reboot','Guard','Manual','Scheduled','ManualCheck','ManualHandWatering'))
 );
 ALTER TABLE watering_events ADD COLUMN IF NOT EXISTS ended_at bigint;
+ALTER TABLE watering_events ALTER COLUMN planned_ms DROP NOT NULL;
 ALTER TABLE watering_events DROP CONSTRAINT IF EXISTS watering_events_check;
 ALTER TABLE watering_events DROP CONSTRAINT IF EXISTS watering_events_reason_check;
+ALTER TABLE watering_events DROP CONSTRAINT IF EXISTS watering_events_source_check;
+ALTER TABLE watering_events DROP CONSTRAINT IF EXISTS watering_events_planned_ms_check;
 ALTER TABLE watering_events DROP CONSTRAINT IF EXISTS watering_events_reason_values_ck;
+ALTER TABLE watering_events DROP CONSTRAINT IF EXISTS watering_events_source_values_ck;
+ALTER TABLE watering_events DROP CONSTRAINT IF EXISTS watering_events_planned_ms_ck;
 ALTER TABLE watering_events DROP CONSTRAINT IF EXISTS watering_events_duration_reason_ck;
+ALTER TABLE watering_events DROP CONSTRAINT IF EXISTS watering_events_manual_hand_watering_ck;
 DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='watering_events_reason_values_ck') THEN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='watering_events'::regclass AND conname='watering_events_reason_values_ck') THEN
         ALTER TABLE watering_events ADD CONSTRAINT watering_events_reason_values_ck CHECK (
-            reason IN ('Running','Duration','Wet','Sensor','Tank','Stop','Reboot','Guard','Manual','Scheduled','ManualCheck')
+            reason IN ('Running','Duration','Wet','Sensor','Tank','Stop','Reboot','Guard','Manual','Scheduled','ManualCheck','ManualHandWatering')
         );
     END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='watering_events_duration_reason_ck') THEN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='watering_events'::regclass AND conname='watering_events_source_values_ck') THEN
+        ALTER TABLE watering_events ADD CONSTRAINT watering_events_source_values_ck CHECK (source IN ('AI','MANUAL','RULE','MANUAL_CARE'));
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='watering_events'::regclass AND conname='watering_events_planned_ms_ck') THEN
+        ALTER TABLE watering_events ADD CONSTRAINT watering_events_planned_ms_ck CHECK (planned_ms IS NULL OR planned_ms >= 0);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid='watering_events'::regclass AND conname='watering_events_duration_reason_ck') THEN
         ALTER TABLE watering_events ADD CONSTRAINT watering_events_duration_reason_ck CHECK (
             (reason IN ('Reboot','Manual') AND actual_ms IS NULL AND (reason <> 'Manual' OR ended_at IS NOT NULL))
-            OR (reason NOT IN ('Reboot','Manual') AND actual_ms IS NOT NULL)
+            OR (reason='ManualHandWatering' AND source IN ('MANUAL_CARE','MANUAL') AND planned_ms IS NULL AND actual_ms IS NULL)
+            OR (reason NOT IN ('Reboot','Manual','ManualHandWatering') AND planned_ms IS NOT NULL AND actual_ms IS NOT NULL)
         );
     END IF;
 END $$;

@@ -12,6 +12,9 @@ AI_COLUMNS = ["timestamp", "device_id", "calibration_id", "data_origin", "soil_p
               "temperature_c", "humidity_pct", "minutes_since_water", "water_event_count",
               "time_basis"]
 STATIC_DEMO_BOOT_ID = "seed-synthetic-v2"
+AI_UNAVAILABLE_HISTORY = "Chưa đủ điều kiện: Chưa tích xác nhận đối soát lịch sử tưới hoặc cây vừa được tưới trong 15 phút gần nhất (độ ẩm đang biến động mạnh)."
+AI_UNAVAILABLE_DATA = "Chưa đủ điều kiện dữ liệu: Cần tối thiểu 16 phút dữ liệu hoàn tất liên tiếp gần nhất (hiện chỉ có {minutes} phút hoặc dữ liệu đã cũ/ngắt quãng)."
+AI_UNAVAILABLE_MODEL = "Mô hình không tương thích: Bundle AI hiện tại được huấn luyện cho định danh/nguồn dữ liệu khác (calibration_id / data_origin không khớp với thiết bị đang chọn)."
 
 
 def make_recent_minute_dataframe(device_id: str, telemetry: list[dict], events: list[dict]) -> pd.DataFrame:
@@ -63,7 +66,9 @@ def make_recent_minute_dataframe(device_id: str, telemetry: list[dict], events: 
         if event.get("reason") == "Reboot":
             # Unknown watering duration/time makes downstream features untrustworthy.
             return pd.DataFrame(columns=AI_COLUMNS)
-        if event.get("reason") == "Manual":
+        if event.get("reason") == "ManualHandWatering":
+            ended = pd.Timestamp(int(event["started_at"]), unit="s", tz="UTC")
+        elif event.get("reason") == "Manual":
             if event.get("ended_at") is None:
                 return pd.DataFrame(columns=AI_COLUMNS)
             ended = pd.Timestamp(int(event["ended_at"]), unit="s", tz="UTC")
@@ -84,6 +89,49 @@ def make_recent_minute_dataframe(device_id: str, telemetry: list[dict], events: 
     return minute[AI_COLUMNS]
 
 
+def _trailing_complete_minutes(recent: pd.DataFrame) -> int:
+    if recent.empty or "timestamp" not in recent:
+        return 0
+    required = ["soil_pct", "temperature_c", "humidity_pct", "minutes_since_water", "water_event_count"]
+    if any(name not in recent for name in required):
+        return 0
+    frame = recent.sort_values("timestamp")
+    count = 0
+    previous = None
+    for _, row in frame.iloc[::-1].iterrows():
+        stamp = pd.Timestamp(row["timestamp"])
+        if stamp.tzinfo is None or any(pd.isna(row[name]) for name in required):
+            break
+        if previous is not None and previous - stamp != pd.Timedelta(minutes=1):
+            break
+        count += 1
+        previous = stamp
+    return count
+
+
+def unavailable_reason(error: Exception | str, recent: pd.DataFrame,
+                       bundle: dict | None = None) -> str:
+    message = str(error).lower()
+    quality = (bundle or {}).get("metadata", {}).get("quality", {})
+    if any(token in message for token in ("model/data", "feature version", "time_basis mismatch", "data_origin must")):
+        return AI_UNAVAILABLE_MODEL
+    if not recent.empty and "minutes_since_water" in recent and len(recent):
+        latest_since = pd.to_numeric(recent["minutes_since_water"], errors="coerce").iloc[-1]
+        if pd.notna(latest_since) and float(latest_since) <= 15:
+            return AI_UNAVAILABLE_HISTORY
+        if "water_event_count" in recent:
+            tail = recent["water_event_count"].tail(16).dropna()
+            if len(tail) > 1 and tail.nunique() > 1:
+                return AI_UNAVAILABLE_HISTORY
+    minutes = _trailing_complete_minutes(recent)
+    # Detect metadata incompatibility before a short-window validation error masks it.
+    if bundle and not recent.empty and quality:
+        for column, key in (("device_id", "device_id"), ("calibration_id", "calibration_id"), ("data_origin", "data_origin")):
+            if column in recent and str(recent[column].iloc[0]) != str(quality.get(key)):
+                return AI_UNAVAILABLE_MODEL
+    return AI_UNAVAILABLE_DATA.format(minutes=minutes)
+
+
 def run_prediction(bundle: dict, recent: pd.DataFrame, now: str | None = None,
                    predictor: Callable = predict) -> dict:
     """Run safe advice inference. Never turns an advice object into a pump command."""
@@ -91,7 +139,8 @@ def run_prediction(bundle: dict, recent: pd.DataFrame, now: str | None = None,
         result = predictor(bundle, recent, now or datetime.now(timezone.utc).isoformat())
         return {"status": "available", **result, "can_trigger_pump": False}
     except (ValueError, KeyError, TypeError) as exc:
-        return {"status": "unavailable", "reason": str(exc), "can_trigger_pump": False}
+        return {"status": "unavailable", "reason": unavailable_reason(exc, recent, bundle),
+                "detail": str(exc), "can_trigger_pump": False}
 
 
 def rebase_demo_window(recent: pd.DataFrame, now: str | datetime | None = None) -> pd.DataFrame:

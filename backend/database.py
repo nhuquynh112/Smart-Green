@@ -38,9 +38,12 @@ CREATE TABLE IF NOT EXISTS commands(device_id TEXT NOT NULL REFERENCES devices(d
 CREATE INDEX IF NOT EXISTS commands_pending_idx ON commands(device_id,status,command_seq);
 CREATE TABLE IF NOT EXISTS watering_events(device_id TEXT NOT NULL REFERENCES devices(device_id),event_id INTEGER NOT NULL,
  schema_version INTEGER NOT NULL DEFAULT 1,command_seq INTEGER NOT NULL DEFAULT 0,started_at INTEGER NOT NULL,
- planned_ms INTEGER NOT NULL,actual_ms INTEGER,ended_at INTEGER,source TEXT NOT NULL,reason TEXT NOT NULL,received_at TEXT NOT NULL,
- payload TEXT NOT NULL,PRIMARY KEY(device_id,event_id),CHECK(reason IN ('Reboot','Manual') OR actual_ms IS NOT NULL),
- CHECK(reason NOT IN ('Reboot','Manual') OR actual_ms IS NULL),CHECK(reason<>'Manual' OR ended_at IS NOT NULL));
+ planned_ms INTEGER,actual_ms INTEGER,ended_at INTEGER,source TEXT NOT NULL,reason TEXT NOT NULL,received_at TEXT NOT NULL,
+ payload TEXT NOT NULL,PRIMARY KEY(device_id,event_id),
+ CHECK((reason='ManualHandWatering' AND source IN ('MANUAL_CARE','MANUAL') AND planned_ms IS NULL AND actual_ms IS NULL)
+    OR (reason IN ('Reboot','Manual') AND actual_ms IS NULL)
+    OR (reason NOT IN ('Reboot','Manual','ManualHandWatering') AND planned_ms IS NOT NULL AND actual_ms IS NOT NULL)),
+ CHECK(reason<>'Manual' OR ended_at IS NOT NULL));
 CREATE INDEX IF NOT EXISTS watering_events_device_started_idx ON watering_events(device_id,started_at DESC);
 CREATE TABLE IF NOT EXISTS ai_predictions(prediction_id INTEGER PRIMARY KEY AUTOINCREMENT,device_id TEXT NOT NULL
  REFERENCES devices(device_id),as_of TEXT,available_at TEXT,horizon_minutes INTEGER,predicted_soil_pct REAL,
@@ -213,17 +216,18 @@ class Database:
                     self._conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {declaration}")
         self._conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS commands_request_id_idx ON commands(device_id,request_id) WHERE request_id IS NOT NULL")
         table_sql = self._conn.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='watering_events'").fetchone()["sql"] or ""
-        if "'Scheduled'" not in table_sql or "'ManualCheck'" not in table_sql:
+        if "'Scheduled'" not in table_sql or "'ManualCheck'" not in table_sql or "'ManualHandWatering'" not in table_sql:
             self._conn.executescript("""
             DROP INDEX IF EXISTS watering_events_device_started_idx;
             CREATE TABLE watering_events_new(
               device_id TEXT NOT NULL REFERENCES devices(device_id),event_id INTEGER NOT NULL,
               schema_version INTEGER NOT NULL DEFAULT 1,command_seq INTEGER NOT NULL DEFAULT 0,
-              started_at INTEGER NOT NULL,planned_ms INTEGER NOT NULL,actual_ms INTEGER,ended_at INTEGER,
+              started_at INTEGER NOT NULL,planned_ms INTEGER,actual_ms INTEGER,ended_at INTEGER,
               source TEXT NOT NULL,reason TEXT NOT NULL,received_at TEXT NOT NULL,payload TEXT NOT NULL,
               PRIMARY KEY(device_id,event_id),
-              CHECK(reason IN ('Reboot','Manual') OR actual_ms IS NOT NULL),
-              CHECK(reason NOT IN ('Reboot','Manual') OR actual_ms IS NULL),
+              CHECK((reason='ManualHandWatering' AND source IN ('MANUAL_CARE','MANUAL') AND planned_ms IS NULL AND actual_ms IS NULL)
+                OR (reason IN ('Reboot','Manual') AND actual_ms IS NULL)
+                OR (reason NOT IN ('Reboot','Manual','ManualHandWatering') AND planned_ms IS NOT NULL AND actual_ms IS NOT NULL)),
               CHECK(reason<>'Manual' OR ended_at IS NOT NULL));
             INSERT INTO watering_events_new(device_id,event_id,schema_version,command_seq,started_at,planned_ms,
               actual_ms,ended_at,source,reason,received_at,payload)

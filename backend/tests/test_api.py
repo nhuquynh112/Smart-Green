@@ -61,6 +61,9 @@ class SyncASGIClient:
         values = {**params}
         if path != "/api/v1/web/devices":
             values["device_id"] = parts[5] if "/web/" in path else parts[4]
+        if path.endswith("/dashboard"):
+            values.setdefault("boot_id", None)
+            values.setdefault("hours", "1h")
         if "/requests/" in path:
             values["request_id"] = parts[-1]
         if "/web/" not in path:
@@ -96,7 +99,11 @@ class SyncASGIClient:
             values["body"] = json
         if admin:
             from fastapi.security import HTTPBasicCredentials
-            values["_"] = HTTPBasicCredentials(username="admin", password="smartgreen2026")
+            credentials = HTTPBasicCredentials(username="admin", password="smartgreen2026")
+            if path.endswith("/manual-watering"):
+                values["username"] = _admin_auth(credentials)
+            else:
+                values["_"] = credentials
         result = self._call(path, **values)
         return result if isinstance(result, DirectResponse) else DirectResponse(result)
 
@@ -218,7 +225,8 @@ def test_reboot_event_null_duration_and_idempotency(client, db):
 
 
 def test_ai_inference_service_builds_v2_and_never_authorizes_pump(db):
-    from backend.ai_service import AI_COLUMNS, make_recent_minute_dataframe, run_prediction
+    from backend.ai_service import (AI_COLUMNS, AI_UNAVAILABLE_HISTORY, AI_UNAVAILABLE_MODEL,
+                                    make_recent_minute_dataframe, run_prediction)
 
     start = datetime.now(timezone.utc).replace(second=0, microsecond=0) - timedelta(minutes=16)
     rows = []
@@ -240,8 +248,18 @@ def test_ai_inference_service_builds_v2_and_never_authorizes_pump(db):
 
     result = run_prediction({}, recent, predictor=fake_predict)
     assert result["status"] == "available" and result["can_trigger_pump"] is False
-    unavailable = run_prediction({}, recent, predictor=lambda *_: (_ for _ in ()).throw(ValueError("stale data")))
-    assert unavailable == {"status": "unavailable", "reason": "stale data", "can_trigger_pump": False}
+    unavailable = run_prediction({}, recent, predictor=lambda *_: (_ for _ in ()).throw(ValueError("Stale or incomplete/future minute data")))
+    assert unavailable["status"] == "unavailable"
+    assert unavailable["reason"].startswith("Chưa đủ điều kiện dữ liệu:")
+    assert unavailable["can_trigger_pump"] is False
+    mismatch = run_prediction({"metadata": {"quality": {"device_id": "other-device"}}}, recent,
+                              predictor=lambda *_: (_ for _ in ()).throw(ValueError("Model/data device_id mismatch")))
+    assert mismatch["reason"] == AI_UNAVAILABLE_MODEL
+    recent_water = make_recent_minute_dataframe(DEVICE, rows, [
+        {"started_at": int((start + timedelta(minutes=15)).timestamp()), "actual_ms": 1000, "reason": "Duration"}])
+    wet = run_prediction({}, recent_water,
+                         predictor=lambda *_: (_ for _ in ()).throw(ValueError("Need 16 complete consecutive minutes")))
+    assert wet["reason"] == AI_UNAVAILABLE_HISTORY
 
 
 def test_ai_route_stores_unavailable_without_confirmed_watering_history(db):
@@ -249,6 +267,7 @@ def test_ai_route_stores_unavailable_without_confirmed_watering_history(db):
     response = client.get(f"/api/v1/devices/{DEVICE}/ai/prediction", headers=headers())
     assert response.status_code == 200
     assert response.json()["status"] == "unavailable"
+    assert response.json()["reason"].startswith("Chưa đủ điều kiện:")
     row = db.one("SELECT status,can_trigger_pump FROM ai_predictions ORDER BY prediction_id DESC LIMIT 1")
     assert row == {"status": "unavailable", "can_trigger_pump": 0}
 
@@ -462,6 +481,56 @@ def test_dashboard_watering_stats_separates_sources_and_estimates_water(client, 
     assert stats["flow_is_configured"] is True
 
 
+def test_dashboard_filters_boot_and_reports_missing_sample_sequences(client):
+    first = telemetry(10)
+    first.update(boot_id="session-a", timestamp="2026-11-08T10:00:00Z")
+    next_item = telemetry(13)
+    next_item.update(boot_id="session-a", timestamp="2026-11-08T10:03:00Z")
+    other = telemetry(1)
+    other.update(boot_id="session-b", timestamp="2026-11-08T10:04:00Z")
+    for payload in (first, next_item, other):
+        assert client.post(f"/api/v1/devices/{DEVICE}/telemetry", headers=headers(), json=payload).status_code == 200
+    dashboard = client.get(f"/api/v1/web/devices/{DEVICE}/dashboard?boot_id=session-a&hours=all").json()
+    assert dashboard["boot_ids"][0] == "session-b"
+    assert dashboard["selected_boot_id"] == "session-a"
+    assert dashboard["sample_count"] == 2
+    assert dashboard["missing_sample_count"] == 2
+    assert dashboard["missing_sample_seqs"] == [11, 12]
+
+
+def test_manual_hand_watering_stores_null_pump_duration_and_is_ai_event(client, db):
+    started = datetime.now(timezone.utc) - timedelta(minutes=4)
+    response = client.post(f"/api/v1/web/devices/{DEVICE}/manual-watering", admin=True, json={
+        "started_at": started.isoformat(), "water_ml": 50.0, "note": "Tưới bằng bình xịt 50 ml",
+    })
+    assert response.status_code == 201
+    row = db.one("SELECT started_at,planned_ms,actual_ms,source,reason,payload FROM watering_events WHERE device_id=? AND event_id=?",
+                 (DEVICE, response.json()["event_id"]))
+    assert row["planned_ms"] is None and row["actual_ms"] is None
+    assert row["source"] == "MANUAL_CARE" and row["reason"] == "ManualHandWatering"
+    assert __import__("json").loads(row["payload"])["water_ml"] == 50.0
+    stats = client.get(f"/api/v1/web/devices/{DEVICE}/dashboard").json()["watering_stats"]
+    assert stats["total_events"] == 1 and stats["manual_count"] == 1
+    assert stats["total_actual_ms"] == 0
+    from backend.ai_service import make_recent_minute_dataframe
+    rows = [{"boot_id": "boot-1", "measured_at": started + timedelta(minutes=i), "data_origin": "real",
+             "calibration_id": "cal-v1", "soil_valid": True, "air_valid": True, "soil_pct": 40-i*.1,
+             "temperature_c": 25.0, "humidity_pct": 60.0} for i in range(1, 5)]
+    event = {"started_at": row["started_at"], "reason": row["reason"], "actual_ms": None}
+    ai_frame = make_recent_minute_dataframe(DEVICE, rows, [event])
+    assert ai_frame.water_event_count.iloc[-1] == 1
+    assert ai_frame.minutes_since_water.iloc[-1] < 10
+
+
+def test_telemetry_only_rejects_admin_command_with_clear_error(client):
+    item = telemetry()
+    item.update(telemetry_only=True, build_stage="bringup")
+    assert client.post(f"/api/v1/devices/{DEVICE}/telemetry", headers=headers(), json=item).status_code == 200
+    response = client.post(f"/api/v1/web/devices/{DEVICE}/commands", admin=True, json={"kind": "STOP"})
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Thiết bị đang ở chế độ chỉ thu dữ liệu (telemetry_only=true), không nhận lệnh điều khiển bơm"
+
+
 def test_telemetry_csv_export_returns_header_and_device_rows(client):
     payload = telemetry()
     assert client.post(f"/api/v1/devices/{DEVICE}/telemetry", headers=headers(), json=payload).status_code == 200
@@ -526,13 +595,13 @@ def test_http_route_auth_and_quota_end_to_end(db):
                 if not delivered:
                     delivered=True
                     return {"type":"http.request","body":encoded,"more_body":False}
-                await asyncio.Event().wait()
+                return {"type":"http.disconnect"}
             async def send(message): messages.append(message)
             scope={"type":"http","asgi":{"version":"3.0"},"http_version":"1.1","method":"POST",
                    "scheme":"http","path":path,"raw_path":path.encode(),"query_string":b"",
                    "root_path":"","server":("test",80),"client":("test",1),
                    "headers":[(b"content-type",b"application/json")]+[(k.lower().encode(),v.encode()) for k,v in (request_headers or {}).items()]}
-            await app(scope,receive,send)
+            await asyncio.wait_for(app(scope,receive,send), timeout=5)
             status=next(m["status"] for m in messages if m["type"]=="http.response.start")
             content=b"".join(m.get("body",b"") for m in messages if m["type"]=="http.response.body")
             return status,json.loads(content) if content else None
