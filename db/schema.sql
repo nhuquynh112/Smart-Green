@@ -138,4 +138,9 @@ CREATE TABLE IF NOT EXISTS ai_predictions (
 CREATE INDEX IF NOT EXISTS ai_predictions_device_created_idx
     ON ai_predictions(device_id, created_at DESC);
 
+-- Durable web request identity; old commands retain NULL identity.
+ALTER TABLE commands ADD COLUMN IF NOT EXISTS request_id text;
+ALTER TABLE commands ADD COLUMN IF NOT EXISTS request_fingerprint text;
+CREATE UNIQUE INDEX IF NOT EXISTS commands_request_id_idx ON commands(device_id,request_id) WHERE request_id IS NOT NULL;
+
 COMMIT;

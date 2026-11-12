@@ -30,6 +30,7 @@ def client(db):
 class SyncASGIClient:
     """Call the registered synchronous FastAPI handlers without binding sockets."""
     def __init__(self, app):
+        self.database = app.state.db
         self.routes = []
         for route in app.routes:
             if hasattr(route, "endpoint"):
@@ -60,6 +61,8 @@ class SyncASGIClient:
         values = {**params}
         if path != "/api/v1/web/devices":
             values["device_id"] = parts[5] if "/web/" in path else parts[4]
+        if "/requests/" in path:
+            values["request_id"] = parts[-1]
         if "/web/" not in path:
             values["x_api_key"] = (headers or {}).get("X-API-Key")
         if admin:
@@ -68,10 +71,20 @@ class SyncASGIClient:
         result = self._call(path, **values)
         return result if isinstance(result, DirectResponse) else DirectResponse(result)
 
-    def post(self, url, headers=None, json=None, admin=False):
+    def post(self, url, headers=None, json=None, admin=False, auto_identity=True):
         path = url.split("?", 1)[0]
         parts = path.split("/")
         values = {"device_id": parts[5] if "/web/" in path else parts[4]}
+        # Model the current web client: each new user action gets a unique ID
+        # and uses the last observed command watermark. Explicit identities are untouched.
+        if auto_identity and "/web/" in path and parts[-1]=="commands" and isinstance(json,dict) and "request_id" not in json:
+            import uuid
+            device_id=values['device_id']
+            values_seen=[self.database.one("SELECT last_command_seq AS n FROM devices WHERE device_id=?",(device_id,)),
+                         self.database.one("SELECT MAX(command_seq) AS n FROM commands WHERE device_id=?",(device_id,)),
+                         self.database.one("SELECT MAX(last_command_seq) AS n FROM telemetry WHERE device_id=?",(device_id,))]
+            watermark=max(int((row or {}).get('n') or 0) for row in values_seen)
+            json={**json,'request_id':uuid.uuid4().hex,'expected_seq':watermark}
         if "/web/" not in path:
             values["x_api_key"] = (headers or {}).get("X-API-Key")
         if parts[-1] == "telemetry" or parts[-1] == "events":
@@ -530,7 +543,7 @@ def test_http_route_auth_and_quota_end_to_end(db):
         status,_=await post(f'/api/v1/devices/{DEVICE}/telemetry',row,headers())
         assert status==200
         app.dependency_overrides[_admin_auth]=lambda:'test-admin'
-        status,body=await post(path,{'kind':'WATER','duration_ms':500})
+        status,body=await post(path,{'kind':'WATER','duration_ms':500,'request_id':'asgi-request-00001','expected_seq':0})
         assert status==409 and 'hạn mức' in body['detail']
         status,_=await post(path,{'kind':'STOP'})
         assert status==201
@@ -590,3 +603,82 @@ def test_command_rejects_fields_for_another_kind(client, db, body):
     response=client.post(f'/api/v1/web/devices/{DEVICE}/commands',admin=True,json=body)
     assert response.status_code==400
     assert db.one('SELECT COUNT(*) AS n FROM commands')['n']==0
+
+
+@pytest.mark.parametrize("body", [
+    {"kind": []}, {"kind": {}}, {"kind": None},
+    {"kind": "SET_MODE", "mode": []},
+    {"kind": "SET_MODE", "mode": {}},
+    {"kind": "SET_MODE", "mode": None},
+])
+def test_command_non_string_discriminators_are_client_errors(client, db, body):
+    response = client.post(f"/api/v1/web/devices/{DEVICE}/commands", admin=True, json=body)
+    assert response.status_code == 400
+    assert db.all("SELECT * FROM commands WHERE device_id=?", (DEVICE,)) == []
+
+
+def test_durable_request_replay_conflict_and_stop_fence(client, db):
+    url=f"/api/v1/web/devices/{DEVICE}/commands"
+    request={"kind":"SET_MODE","mode":"MANUAL","request_id":"request-test-00001","expected_seq":0}
+    first=client.post(url,admin=True,json=request)
+    assert first.status_code==201
+    db.execute("UPDATE commands SET status='ACKED',ack_result='mode_set'")
+    # Replay is stable even after ACK and a server/app reconstruction.
+    other=SyncASGIClient(create_app(db=db,bundle=None))
+    replay=other.post(url,admin=True,json=request)
+    assert replay.status_code==200 and replay.json()['command_seq']==first.json()['command_seq']
+    assert replay.json()['expires_at']==first.json()['expires_at']
+    assert client.post(url,admin=True,json={**request,"mode":"AUTO"}).status_code==409
+    stop=client.post(url,admin=True,json={"kind":"STOP","request_id":"request-test-stop1","expected_seq":0})
+    assert stop.status_code==201
+    delayed={"kind":"SET_MODE","mode":"AUTO","request_id":"request-test-delay","expected_seq":1}
+    assert client.post(url,admin=True,json=delayed).status_code==409
+    assert db.one("SELECT COUNT(*) AS n FROM commands")['n']==2
+
+
+def test_concurrent_web_requests_are_serialized(db):
+    from concurrent.futures import ThreadPoolExecutor
+    client=SyncASGIClient(create_app(db=db,bundle=None))
+    url=f"/api/v1/web/devices/{DEVICE}/commands"
+    request={"kind":"SET_MODE","mode":"MANUAL","request_id":"concurrent-000001","expected_seq":0}
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        responses=list(pool.map(lambda _:client.post(url,admin=True,json=request),range(4)))
+    assert sorted(r.status_code for r in responses)==[200,200,200,201]
+    assert {r.json()['command_seq'] for r in responses}=={1}
+    db.execute("UPDATE commands SET status='ACKED',ack_result='mode_set'")
+    # A different tab still on sequence zero cannot create another operation.
+    assert client.post(url,admin=True,json={**request,"request_id":"concurrent-000002"}).status_code==409
+
+
+@pytest.mark.parametrize('request_id,expected_seq',[("short",0),([],0),("valid-request-001",True),("valid-request-001",-1),("valid-request-001",None)])
+def test_invalid_request_identity(client,request_id,expected_seq):
+    response=client.post(f"/api/v1/web/devices/{DEVICE}/commands",admin=True,json={"kind":"STOP","request_id":request_id,"expected_seq":expected_seq})
+    assert response.status_code==400
+
+
+def test_old_web_clients_cannot_bypass_identity_fence(client):
+    url=f"/api/v1/web/devices/{DEVICE}/commands"
+    assert client.post(url,admin=True,json={"kind":"SET_MODE","mode":"AUTO"},auto_identity=False).status_code==409
+    assert client.post(url,admin=True,json={"kind":"WATER","duration_ms":500},auto_identity=False).status_code==409
+    # Preserve safe shutdown even for an old page.
+    assert client.post(url,admin=True,json={"kind":"STOP"},auto_identity=False).status_code==201
+
+
+def test_request_identity_survives_database_reopen(tmp_path):
+    url="sqlite:///"+str(tmp_path/'requests.sqlite3')
+    db=Database(url);db.ensure_device(DEVICE,KEY)
+    client=SyncASGIClient(create_app(db=db,bundle=None))
+    path=f"/api/v1/web/devices/{DEVICE}/commands"
+    request={"kind":"SET_MODE","mode":"MANUAL","request_id":"durable-request-0001","expected_seq":0}
+    first=client.post(path,admin=True,json=request);assert first.status_code==201
+    db.close()
+    db=Database(url)
+    try:
+        client=SyncASGIClient(create_app(db=db,bundle=None))
+        replay=client.post(path,admin=True,json=request)
+        assert replay.status_code==200 and replay.json()['command_seq']==first.json()['command_seq']
+        found=client.get(f"/api/v1/web/devices/{DEVICE}/requests/{request['request_id']}")
+        assert found.status_code==200 and found.json()['command_seq']==first.json()['command_seq']
+        assert client.get(f"/api/v1/web/devices/{DEVICE}/requests/not-found-request").status_code==404
+    finally:
+        db.close()

@@ -1,6 +1,6 @@
 # Việc còn lại của TV1
 
-## Mốc hiện tại — 11/11/2026 (ưu tiên hơn danh sách lịch sử bên dưới)
+## Mốc hiện tại — 12/11/2026 (ưu tiên hơn danh sách lịch sử bên dưới)
 
 - Đã sửa luồng điều khiển, trạng thái dashboard và thời điểm tính xung; Python 97 tests + 8 subtests, dashboard 13 tests, native firmware đạt; ESP32 build/upload thành công.
 - Đã nạp bản sửa và restart backend lúc khoảng 21:38; telemetry mẫu 2 xác nhận OFF, pump_running=false, clock_ready=true, không lỗi clock/storage. Chưa thử bơm thật trên bản vừa nạp.
@@ -10,13 +10,14 @@
 
 1. Thử MANUAL cùng thời lượng 3 lần, hứng riêng từng lần và đo ml; quan sát motor dừng và không có nước tự chảy tiếp. Ghi command ID, thời lượng log và quan sát thật. 30–35 ml trước đây chỉ là ước lượng.
 2. Xác minh STOP/OFF, phao thiếu nước, OFF sau reset; lưu bằng chứng. STOP qua mạng có độ trễ, ACK không phải cảm biến xác nhận motor.
-3. Chốt chính sách hạn mức trước nghiệm thu AUTO: MANUAL bỏ giới hạn số lần nhưng vẫn dùng chung bộ đếm và ngân sách thời gian với AUTO. Không xóa NVS để vượt quota. Thử AUTO khô bật/đủ ẩm dừng, hysteresis, khoảng nghỉ và quota sau khi chính sách nhất quán.
+3. Sau khi cập nhật bản separate-quota-v5: xác nhận ngân sách MANUAL/AUTO riêng, migration giữ sử dụng cũ đến hết cửa sổ. Thử AUTO khô bật/đủ ẩm dừng, hysteresis, khoảng nghỉ và quota. Không xóa NVS để vượt quota.
 4. Thử mất Wi-Fi/backend rồi phục hồi, lệnh trùng/hết hạn và reset; đối chiếu DB, ACK, mẫu thiếu và sự kiện, không chỉ nhìn dashboard.
 
 ### Để hoàn thành TV1
 
 - [ ] Nghiệm thu phần cứng và điều khiển bằng bảng kết quả trên bản mới; cố định đường ống/cảm biến và đo lưu lượng.
-- [ ] Xử lý chính sách quota chung và request dashboard treo; kiểm thử tích hợp PostgreSQL trên DB thử riêng cùng TV2.
+- [x] Sửa quota riêng, timeout, mã yêu cầu bền vững và fence sau STOP; kiểm thử PostgreSQL bằng database tạm riêng.
+- [ ] Triển khai backend/firmware mới và nghiệm thu thực tế các sửa đổi 12/11; xem [báo cáo](CODE_REVIEW_2026-11-12.md).
 - [ ] Thu thêm các chu kỳ khô–tưới độc lập với nhật ký; không dùng số giờ riêng lẻ làm tiêu chí đủ dữ liệu.
 - [ ] Đánh giá baseline, Linear Regression, Random Forest bằng chia thời gian và tập test riêng; báo cáo MAE thật và giới hạn, không lấy MAE synthetic.
 - [ ] Tích hợp dự báo ở chế độ quan sát, kiểm tra fallback; nghiệm thu phần phối hợp TV1/TV2.

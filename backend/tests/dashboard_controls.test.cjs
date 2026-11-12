@@ -2,22 +2,27 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-function setup(){
+function setup(sharedStorage=new Map()){
   const elements=new Map();
   const el=id=>{if(!elements.has(id))elements.set(id,{value:'',textContent:'',classList:{add(){},remove(){}}});return elements.get(id);};
-  let posts=0, finishPost, chart, getError=false;
+  let posts=0, finishPost, chart, getError=false, hangGet=false;
+  const requests=[],timers=new Map();let timerId=0;
   function Chart(element,config){Object.assign(this,config);this.update=()=>{};chart=this;}
   const data={device:{device_id:'garden',connected:true,last_seen_at:new Date().toISOString()},latest:{mode:'OFF',water_ok:true,soil_valid:true,clock_ready:true,commissioned:true,received_at:new Date().toISOString(),measured_at:new Date().toISOString()},commands:[]};
-  const context={document:{getElementById:el,activeElement:null},window:{Chart},Chart,sessionStorage:{getItem:()=> 'test',setItem(){},removeItem(){}},Date,Number,Math,JSON,encodeURIComponent,setInterval(){},fetch:async(url,options)=>{
-    if(options.method==='POST'){posts++;await new Promise(r=>finishPost=r);return {ok:true,status:201,json:async()=>({command_seq:1})};}
+  const context={Uint8Array,crypto:require('node:crypto').webcrypto,localStorage:{getItem:k=>sharedStorage.get(k)||null,setItem:(k,v)=>sharedStorage.set(k,v),removeItem:k=>sharedStorage.delete(k)},document:{getElementById:el,activeElement:null},window:{Chart},Chart,sessionStorage:{getItem:()=> 'test',setItem(){},removeItem(){}},Date,Number,Math,JSON,encodeURIComponent,AbortController,setTimeout(fn){timers.set(++timerId,fn);return timerId;},clearTimeout(id){timers.delete(id);},setInterval(){},fetch:async(url,options)=>{
+    if(options.method==='POST'){posts++;const seq=posts;await new Promise((resolve,reject)=>{finishPost=resolve;requests.push({resolve,reject,body:JSON.parse(options.body)});options.signal.addEventListener('abort',()=>reject(new Error('aborted')));});return {ok:true,status:201,json:async()=>({command_seq:seq})};}
+    if(hangGet)await new Promise((resolve,reject)=>options.signal.addEventListener('abort',()=>reject(new Error('aborted'))));
     if(getError)throw new Error('NetworkError');
+    for(const c of data.commands){if(!c.request_id)c.request_id=requests[c.command_seq-1]?.body.request_id;}
+    if(url.includes('/requests/')){const c=data.commands.find(c=>c.request_id===url.split('/').at(-1));return {ok:!!c,status:c?200:404,json:async()=>c||{detail:'not found'}};}
     return {ok:true,status:200,json:async()=>data};
   }};
   let source=fs.readFileSync('backend/static/index.html','utf8').split('<script>').at(-1).split('</script>')[0];
   source=source.replace(/loadDevices\(\)\.catch\(e=>notice\(e.message,'error'\)\);setInterval\([^\n]+/,'');
   source=source.replace('})();',"globalThis.apiTest={render,createCommand,refresh,select(id){selected=id;}};})();");
-  el('waterSeconds').value='0.5';vm.runInNewContext(source,context);context.apiTest.select('garden');context.apiTest.render(data);
-  return {failGet(value){getError=value;},chart:()=>chart,api:context.apiTest,el,data,posts:()=>posts,finish:()=>finishPost()};
+  el('waterSeconds').value='0.5';vm.runInNewContext(source,context);context.apiTest.select('garden');
+  const render=context.apiTest.render;context.apiTest.render=d=>{for(const c of d.commands||[]){if(!c.request_id)c.request_id=requests[c.command_seq-1]?.body.request_id;}return render(d);};context.apiTest.render(data);
+  return {sharedStorage,requests,timers,hangGet(value){hangGet=value;},expire(){for(const fn of [...timers.values()])fn();},failGet(value){getError=value;},chart:()=>chart,api:context.apiTest,el,data,posts:()=>posts,finish:()=>finishPost()};
 }
 test('polling preserves an edited mode and OFF blocks WATER',()=>{
  const s=setup();s.el('modeSelect').value='MANUAL';s.el('modeSelect').onchange();s.api.render(s.data);
@@ -111,4 +116,63 @@ test('changing device cannot send WATER using the previous device readiness',asy
  const s=setup();s.data.latest.mode='MANUAL';s.api.render(s.data);
  s.api.select('different-device');await s.api.createCommand({kind:'WATER',duration_ms:500});
  assert.equal(s.posts(),0);
+});
+
+
+test('hung refresh times out, locks WATER, and polling recovers',async()=>{
+ const s=setup();s.data.latest.mode='MANUAL';s.api.render(s.data);s.hangGet(true);
+ const request=s.api.refresh();s.expire();await request;
+ assert.equal(s.el('waterBtn').disabled,true);assert.match(s.el('notice').textContent,/10 giây/);
+ s.hangGet(false);await s.api.refresh();assert.equal(s.el('waterBtn').disabled,false);assert.equal(s.timers.size,0);
+});
+test('lost POST response reconciles the exact persisted request identity',async()=>{
+ const s=setup();s.data.latest.mode='MANUAL';s.api.render(s.data);
+ const request=s.api.createCommand({kind:'WATER',duration_ms:500});s.expire();await request;
+ await s.api.createCommand({kind:'WATER',duration_ms:500});assert.equal(s.posts(),1);assert.equal(s.el('waterBtn').disabled,true);
+ s.data.commands=[{command_seq:1,kind:'WATER',duration_ms:500,status:'ACKED',ack_result:'started'}];await s.api.refresh();
+ assert.equal(s.el('waterBtn').disabled,false);assert.match(s.el('commandFeedback').textContent,/Lệnh #1/);
+});
+test('late WATER response cannot replace newer STOP tracking',async()=>{
+ const s=setup();s.data.latest.mode='MANUAL';s.api.render(s.data);
+ const water=s.api.createCommand({kind:'WATER',duration_ms:500});
+ const stop=s.api.createCommand({kind:'STOP'});
+ s.requests[1].resolve();await stop;s.requests[0].resolve();await water;
+ assert.match(s.el('commandFeedback').textContent,/#2/);
+ s.data.commands=[{command_seq:2,kind:'STOP',status:'ACKED',ack_result:'stopped'}];s.api.render(s.data);
+ assert.match(s.el('commandFeedback').textContent,/tắt đầu ra/);
+});
+
+test('uncertain WATER ignores unrelated commands and still permits STOP',async()=>{
+ const s=setup();s.data.latest.mode='MANUAL';s.api.render(s.data);
+ const water=s.api.createCommand({kind:'WATER',duration_ms:500});s.expire();await water;
+ s.data.commands=[{command_seq:2,kind:'SET_MODE',mode:'MANUAL',status:'ACKED',ack_result:'mode_set'}];await s.api.refresh();
+ assert.equal(s.el('waterBtn').disabled,true);
+ const stop=s.api.createCommand({kind:'STOP'});assert.equal(s.posts(),2);s.finish();await stop;
+ assert.match(s.el('commandFeedback').textContent,/#2/);
+});
+
+test('reload and another tab retain pending identity without a second POST',async()=>{
+ const first=setup();first.data.latest.mode='MANUAL';first.api.render(first.data);
+ const request=first.api.createCommand({kind:'WATER',duration_ms:500});
+ const id=first.requests[0].body.request_id;
+ const reload=setup(first.sharedStorage);reload.data.latest.mode='MANUAL';reload.api.render(reload.data);
+ await reload.api.createCommand({kind:'WATER',duration_ms:500});assert.equal(reload.posts(),0);
+ // Same contents but another request identity must never unlock this request.
+ reload.data.commands=[{command_seq:10,request_id:'other-request-id',kind:'WATER',duration_ms:500,status:'ACKED',ack_result:'started'}];
+ await reload.api.refresh();assert.equal(reload.el('waterBtn').disabled,true);
+ reload.data.commands=[{command_seq:11,request_id:id,kind:'WATER',duration_ms:500,status:'ACKED',ack_result:'started'}];
+ await reload.api.refresh();assert.equal(reload.el('waterBtn').disabled,false);
+ assert.equal(first.sharedStorage.size,0);
+ first.finish();await request;
+});
+
+
+test('a STOP resolved in another tab clears the original tab uncertainty',async()=>{
+ const s=setup();s.data.latest.mode='MANUAL';s.api.render(s.data);
+ const first=s.api.createCommand({kind:'WATER',duration_ms:500});s.expire();await first;
+ assert.equal(s.el('waterBtn').disabled,true);
+ // Another tab has reconciled STOP and removed the shared pending request.
+ s.sharedStorage.clear();s.data.latest.mode='OFF';s.data.commands=[];
+ await s.api.refresh();s.el('modeSelect').value='MANUAL';s.el('modeSelect').onchange();
+ assert.equal(s.el('modeBtn').disabled,false);
 });

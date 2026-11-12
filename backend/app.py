@@ -6,6 +6,7 @@ import io
 import json
 import math
 import os
+import re
 import secrets
 import sys
 from datetime import datetime, timezone
@@ -400,7 +401,7 @@ def create_app(db: Database | None = None, bundle: dict | None = None,
 
     @app.get("/api/v1/web/devices/{device_id}/dashboard")
     def web_dashboard(device_id: str):
-        device = database.one("SELECT device_id,display_name,is_demo,connected,last_seen_at,calibration_id,dry_raw,wet_raw,watering_history_complete FROM devices WHERE device_id=?", (device_id,))
+        device = database.one("SELECT device_id,display_name,is_demo,connected,last_seen_at,calibration_id,dry_raw,wet_raw,watering_history_complete,last_command_seq FROM devices WHERE device_id=?", (device_id,))
         if not device:
             raise HTTPException(404, detail="Không tìm thấy thiết bị")
         rows = database.all("SELECT * FROM telemetry WHERE device_id=? ORDER BY received_at DESC LIMIT 180", (device_id,))
@@ -410,7 +411,7 @@ def create_app(db: Database | None = None, bundle: dict | None = None,
         with database.transaction() as conn:
             database.execute_on(conn, "UPDATE commands SET status='EXPIRED' WHERE device_id=? AND status='PENDING' AND expires_at<=?",
                                 (device_id, now_unix))
-        commands = database.all("SELECT command_seq,schema_version,kind,source,duration_ms,mode,issued_at,expires_at,status,ack_result,acked_at FROM commands WHERE device_id=? ORDER BY command_seq DESC LIMIT 30", (device_id,))
+        commands = database.all("SELECT command_seq,schema_version,kind,source,duration_ms,mode,issued_at,expires_at,status,ack_result,acked_at,request_id FROM commands WHERE device_id=? ORDER BY command_seq DESC LIMIT 30", (device_id,))
         events = database.all("SELECT event_id,command_seq,started_at,planned_ms,actual_ms,ended_at,source,reason,received_at,payload FROM watering_events WHERE device_id=? ORDER BY event_id DESC LIMIT 30", (device_id,))
         predictions = database.all("SELECT prediction_id,as_of,available_at,horizon_minutes,predicted_soil_pct,model_name,data_origin,can_trigger_pump,status,raw_output,created_at FROM ai_predictions WHERE device_id=? ORDER BY prediction_id DESC LIMIT 10", (device_id,))
         for event in events:
@@ -482,75 +483,99 @@ def create_app(db: Database | None = None, bundle: dict | None = None,
         ttl = body.get("ttl_sec", 30)
         if type(ttl) is not int or not 1 <= ttl <= 60:
             raise HTTPException(400, detail="TTL phải là số nguyên từ 1 đến 60 giây")
-        if kind not in {"WATER", "SET_MODE", "STOP"}:
+        if not isinstance(kind, str) or kind not in {"WATER", "SET_MODE", "STOP"}:
             raise HTTPException(400, detail="Loại lệnh không hợp lệ")
         duration = body.get("duration_ms")
         mode = body.get("mode")
         source = None
-        allowed = {"kind", "ttl_sec"} | ({"duration_ms"} if kind == "WATER" else {"mode"} if kind == "SET_MODE" else set())
+        allowed = {"kind", "ttl_sec", "request_id", "expected_seq"} | ({"duration_ms"} if kind == "WATER" else {"mode"} if kind == "SET_MODE" else set())
         if set(body) - allowed:
             raise HTTPException(400, detail="Lệnh chứa trường không phù hợp với loại lệnh")
-        if kind == "WATER":
-            if type(duration) is not int or duration <= 0:
-                raise HTTPException(400, detail="duration_ms phải là số nguyên dương")
-            maximum = int(os.getenv("SG_MAX_PULSE_MS", os.getenv("SG_MAX_PUMP_MS", "1000")))
-            if duration > maximum:
-                raise HTTPException(400, detail=f"Thời gian tưới vượt giới hạn an toàn {maximum} ms")
-            latest = database.one("SELECT * FROM telemetry WHERE device_id=? ORDER BY received_at DESC LIMIT 1", (device_id,))
-            if not latest:
-                raise HTTPException(400, detail="Chưa có telemetry mới; từ chối tưới an toàn")
-            water_state = latest.get("water_ok") if latest.get("water_ok") is not None else latest.get("tank_ok")
-            if water_state is not True and water_state != 1:
-                raise HTTPException(400, detail="Phao báo hết nước hoặc chưa xác nhận đủ nước")
-            if latest.get("soil_valid") is not True and latest.get("soil_valid") != 1:
-                raise HTTPException(400, detail="Cảm biến độ ẩm đất lỗi hoặc chưa hợp lệ")
-            received = latest.get("received_at")
-            if isinstance(received, str): received = _parse_time(received, "received_at")
-            if received is None or (datetime.now(timezone.utc)-received).total_seconds() > 90:
-                raise HTTPException(409, detail="Dữ liệu thiết bị đã cũ; chờ ESP32 kết nối lại")
-            if not latest.get("clock_ready") or latest.get("clock_fault"):
-                raise HTTPException(409, detail="Đồng hồ thiết bị chưa sẵn sàng")
-            if not latest.get("commissioned") or latest.get("storage_fault"):
-                raise HTTPException(409, detail="Thiết bị chưa được xác nhận hoặc có lỗi lưu trữ")
-            if latest.get("pump_running"):
-                raise HTTPException(409, detail="Bơm đang chạy; chờ lần hiện tại kết thúc")
-            if latest.get("mode") != "MANUAL":
-                raise HTTPException(409, detail="Chờ telemetry xác nhận chế độ MANUAL trước khi tưới")
-            measured = latest.get("measured_at")
-            if isinstance(measured, str): measured = _parse_time(measured, "measured_at")
-            age = (datetime.now(timezone.utc)-measured).total_seconds() if measured else float("inf")
-            if age > 90 or age < -5:
-                raise HTTPException(409, detail="Mẫu đo đã cũ hoặc thời gian đo không hợp lệ")
-            payload = _unpack_json(latest.get("payload")) or {}
-            elapsed = max(0, (datetime.now(timezone.utc)-received).total_seconds()*1000)
-            if payload.get("cooldown_remaining_ms", 0) > elapsed:
-                raise HTTPException(409, detail="Thiết bị đang trong thời gian nghỉ")
-            if duration > payload.get("max_pulse_ms", maximum):
-                raise HTTPException(400, detail="Thời lượng vượt giới hạn thực của ESP32")
-            if ((payload.get("quota_limit_starts", float("inf")) > 0 and payload.get("quota_starts", 0) >= payload.get("quota_limit_starts", float("inf")))
-                    or duration + payload.get("quota_reserved_ms", 0) > payload.get("quota_limit_ms", float("inf"))):
-                raise HTTPException(409, detail="Đã đạt hạn mức thực của ESP32; không xếp thêm lệnh tưới")
-            source = "MANUAL"
-        elif kind == "SET_MODE":
-            if mode not in MODES:
-                raise HTTPException(400, detail="mode phải là OFF, MANUAL hoặc AUTO")
-        else:
-            duration = mode = None
-        now = int(datetime.now(timezone.utc).timestamp())
+        request_id = body.get("request_id")
+        expected_seq = body.get("expected_seq")
+        if request_id is not None:
+            if not isinstance(request_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]{16,80}", request_id):
+                raise HTTPException(400, detail="request_id không hợp lệ")
+            if type(expected_seq) is not int or not 0 <= expected_seq <= 4294967295:
+                raise HTTPException(400, detail="expected_seq không hợp lệ")
+        elif expected_seq is not None:
+            raise HTTPException(400, detail="expected_seq cần request_id")
+        if kind == "WATER" and (type(duration) is not int or duration <= 0):
+            raise HTTPException(400, detail="duration_ms phải là số nguyên dương")
+        if kind == "SET_MODE" and (not isinstance(mode, str) or mode not in MODES):
+            raise HTTPException(400, detail="mode phải là OFF, MANUAL hoặc AUTO")
+        if request_id is None and not (kind == "STOP" or (kind == "SET_MODE" and mode == "OFF")):
+            raise HTTPException(409, detail="Cần request_id và expected_seq; tải lại giao diện mới trước khi điều khiển")
+        fingerprint = canonical_json({"kind": kind, "duration_ms": duration, "mode": mode, "ttl_sec": ttl, "expected_seq": expected_seq})
         with database.transaction() as conn:
             lock = " FOR UPDATE" if not database.sqlite else ""
             device_state = database.one_on(conn, "SELECT last_command_seq FROM devices WHERE device_id=?" + lock, (device_id,))
             if not device_state:
                 raise HTTPException(404, detail="Không tìm thấy thiết bị")
+            now = int(datetime.now(timezone.utc).timestamp())
+            if request_id is not None:
+                previous = database.one_on(conn, "SELECT * FROM commands WHERE device_id=? AND request_id=?", (device_id, request_id))
+                if previous:
+                    if previous["request_fingerprint"] != fingerprint:
+                        raise HTTPException(409, detail="request_id đã dùng cho nội dung khác")
+                    return JSONResponse({k: previous[k] for k in ("device_id", "command_seq", "kind", "issued_at", "expires_at", "status", "ack_result", "mode", "duration_ms", "request_id")}, status_code=200)
+            max_row = database.one_on(conn, "SELECT MAX(command_seq) AS seq FROM commands WHERE device_id=?", (device_id,))
+            telemetry_seq = database.one_on(conn, "SELECT MAX(last_command_seq) AS seq FROM telemetry WHERE device_id=?", (device_id,))
+            seq = max(int(device_state.get("last_command_seq") or 0), int(max_row.get("seq") or 0),
+                      int(telemetry_seq.get("seq") or 0)) + 1
+            if request_id is not None and kind != "STOP" and not (kind == "SET_MODE" and mode == "OFF") and expected_seq != seq-1:
+                raise HTTPException(409, detail="Trạng thái lệnh đã thay đổi; tải trạng thái mới trước khi gửi")
+            if kind == "WATER":
+                if type(duration) is not int or duration <= 0:
+                    raise HTTPException(400, detail="duration_ms phải là số nguyên dương")
+                maximum = int(os.getenv("SG_MAX_PULSE_MS", os.getenv("SG_MAX_PUMP_MS", "1000")))
+                if duration > maximum:
+                    raise HTTPException(400, detail=f"Thời gian tưới vượt giới hạn an toàn {maximum} ms")
+                latest = database.one_on(conn, "SELECT * FROM telemetry WHERE device_id=? ORDER BY received_at DESC LIMIT 1", (device_id,))
+                if not latest:
+                    raise HTTPException(400, detail="Chưa có telemetry mới; từ chối tưới an toàn")
+                water_state = latest.get("water_ok") if latest.get("water_ok") is not None else latest.get("tank_ok")
+                if water_state is not True and water_state != 1:
+                    raise HTTPException(400, detail="Phao báo hết nước hoặc chưa xác nhận đủ nước")
+                if latest.get("soil_valid") is not True and latest.get("soil_valid") != 1:
+                    raise HTTPException(400, detail="Cảm biến độ ẩm đất lỗi hoặc chưa hợp lệ")
+                received = latest.get("received_at")
+                if isinstance(received, str): received = _parse_time(received, "received_at")
+                if received is None or (datetime.now(timezone.utc)-received).total_seconds() > 90:
+                    raise HTTPException(409, detail="Dữ liệu thiết bị đã cũ; chờ ESP32 kết nối lại")
+                if not latest.get("clock_ready") or latest.get("clock_fault"):
+                    raise HTTPException(409, detail="Đồng hồ thiết bị chưa sẵn sàng")
+                if not latest.get("commissioned") or latest.get("storage_fault"):
+                    raise HTTPException(409, detail="Thiết bị chưa được xác nhận hoặc có lỗi lưu trữ")
+                if latest.get("pump_running"):
+                    raise HTTPException(409, detail="Bơm đang chạy; chờ lần hiện tại kết thúc")
+                if latest.get("mode") != "MANUAL":
+                    raise HTTPException(409, detail="Chờ telemetry xác nhận chế độ MANUAL trước khi tưới")
+                measured = latest.get("measured_at")
+                if isinstance(measured, str): measured = _parse_time(measured, "measured_at")
+                age = (datetime.now(timezone.utc)-measured).total_seconds() if measured else float("inf")
+                if age > 90 or age < -5:
+                    raise HTTPException(409, detail="Mẫu đo đã cũ hoặc thời gian đo không hợp lệ")
+                payload = _unpack_json(latest.get("payload")) or {}
+                elapsed = max(0, (datetime.now(timezone.utc)-received).total_seconds()*1000)
+                if payload.get("cooldown_remaining_ms", 0) > elapsed:
+                    raise HTTPException(409, detail="Thiết bị đang trong thời gian nghỉ")
+                if duration > payload.get("max_pulse_ms", maximum):
+                    raise HTTPException(400, detail="Thời lượng vượt giới hạn thực của ESP32")
+                if ((payload.get("quota_limit_starts", float("inf")) > 0 and payload.get("quota_starts", 0) >= payload.get("quota_limit_starts", float("inf")))
+                        or duration + payload.get("quota_reserved_ms", 0) > payload.get("quota_limit_ms", float("inf"))):
+                    raise HTTPException(409, detail="Đã đạt hạn mức thực của ESP32; không xếp thêm lệnh tưới")
+                source = "MANUAL"
+            elif kind == "SET_MODE":
+                if not isinstance(mode, str) or mode not in MODES:
+                    raise HTTPException(400, detail="mode phải là OFF, MANUAL hoặc AUTO")
+            else:
+                duration = mode = None
             database.execute_on(conn, "UPDATE commands SET status='EXPIRED' WHERE device_id=? AND status='PENDING' AND expires_at<=?", (device_id, now))
             if kind == "STOP" or (kind == "SET_MODE" and mode == "OFF"):
                 database.execute_on(conn, "UPDATE commands SET status='EXPIRED',ack_result=COALESCE(ack_result,'superseded_by_stop') WHERE device_id=? AND status='PENDING'", (device_id,))
             elif database.one_on(conn, "SELECT command_seq FROM commands WHERE device_id=? AND status='PENDING' LIMIT 1", (device_id,)):
                 raise HTTPException(409, detail="Có lệnh đang chờ ESP32; không gửi lặp")
-            max_row = database.one_on(conn, "SELECT MAX(command_seq) AS seq FROM commands WHERE device_id=?", (device_id,))
-            telemetry_seq = database.one_on(conn, "SELECT MAX(last_command_seq) AS seq FROM telemetry WHERE device_id=?", (device_id,))
-            seq = max(int(device_state.get("last_command_seq") or 0), int(max_row.get("seq") or 0),
-                      int(telemetry_seq.get("seq") or 0)) + 1
             values = (device_id, seq, kind, source, duration, mode, now, now + ttl)
             if database.sqlite:
                 database.execute_on(conn, "INSERT INTO commands(device_id,command_seq,schema_version,kind,source,duration_ms,mode,issued_at,expires_at,created_at) VALUES(?,?,1,?,?,?,?,?,?,?)",
@@ -559,13 +584,22 @@ def create_app(db: Database | None = None, bundle: dict | None = None,
             else:
                 database.execute_on(conn, "INSERT INTO commands(device_id,command_seq,schema_version,kind,source,duration_ms,mode,issued_at,expires_at) VALUES(?,?,1,?,?,?,?,?,?)", values)
                 database.execute_on(conn, "UPDATE devices SET last_command_seq=? WHERE device_id=?", (seq, device_id))
+            if request_id is not None:
+                database.execute_on(conn, "UPDATE commands SET request_id=?,request_fingerprint=? WHERE device_id=? AND command_seq=?", (request_id, fingerprint, device_id, seq))
         response = {"schema_version": 1, "device_id": device_id, "command_seq": seq, "kind": kind,
-                    "issued_at": now, "expires_at": now + ttl, "status": "PENDING"}
+                    "issued_at": now, "expires_at": now + ttl, "status": "PENDING", "request_id": request_id}
         if kind == "WATER":
             response.update(source="MANUAL", duration_ms=duration)
         if kind == "SET_MODE":
             response["mode"] = mode
         return JSONResponse(response, status_code=201)
+
+    @app.get("/api/v1/web/devices/{device_id}/requests/{request_id}")
+    def web_request(device_id: str, request_id: str):
+        row = database.one("SELECT command_seq,kind,status,ack_result,request_id FROM commands WHERE device_id=? AND request_id=?", (device_id, request_id))
+        if not row:
+            raise HTTPException(404, detail="Chưa tìm thấy yêu cầu")
+        return row
 
     @app.get("/api/v1/web/auth/check")
     def web_auth_check(username: str = Depends(_admin_auth)):

@@ -66,9 +66,14 @@
   let refreshing = false;
   let refreshFailed = false;
   let refreshNotice = null;
-  const sending = new Set();
+  const sending = new Map();
+  const uncertainCommands = new Map();
   const trackedCommands = new Map();
   const commandMessages = new Map();
+  const requestKey=id=>`sg_pending_v2:${id}`;
+  function storedRequest(id){try{return JSON.parse(localStorage.getItem(requestKey(id))||'null');}catch{return null;}}
+  function clearRequest(id,requestId){if(storedRequest(id)?.body?.request_id===requestId)localStorage.removeItem(requestKey(id));}
+  function requestId(){const bytes=new Uint8Array(16);crypto.getRandomValues(bytes);return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');}
   const ackLabels = {mode_set:'Đã đổi chế độ', started:'ESP32 xác nhận đã bật đầu ra bơm', stopped:'ESP32 xác nhận đã tắt đầu ra bơm', cooldown:'Chưa tưới: đang trong thời gian nghỉ giữa hai lần bơm', mode_or_ai_ceiling:'Chưa tưới: thiết bị chưa ở chế độ MANUAL', sensor_tank_or_wet:'Chưa tưới: điều kiện cảm biến, phao hoặc độ ẩm chưa đạt', not_commissioned_or_fault:'Chưa tưới: thiết bị chưa được xác nhận phần cứng hoặc có lỗi', quota:'Chưa tưới: đã đạt giới hạn tưới', expired_or_clock:'Lệnh hết hạn hoặc đồng hồ chưa hợp lệ'};
   function controlState(d) {
     const t=d.latest||{};
@@ -88,18 +93,26 @@
     return {mode,modeFromAck,remaining,payload,lastWater,unknownCooldown:remaining===null&&lastWater?.ack_result==='cooldown'};
   }
   function commandState(d) {
+    const stored=storedRequest(selected);
+    if(!stored){uncertainCommands.delete(selected);if(!sending.has(selected))trackedCommands.delete(selected);}
+    if(stored?.body?.request_id){
+      const found=(d.commands||[]).find(c=>c.request_id===stored.body.request_id);
+      if(found){trackedCommands.set(selected,found.command_seq);uncertainCommands.delete(selected);}
+      else if(!trackedCommands.has(selected)&&!sending.has(selected)) {uncertainCommands.set(selected,stored);commandMessages.set(selected,'Đang đối soát yêu cầu đã lưu; không bấm tưới lại. STOP vẫn khả dụng.');}
+    }
     const tracked=trackedCommands.get(selected);
     if(tracked) {
       const c=(d.commands||[]).find(c=>c.command_seq===tracked);
       if(c && (c.ack_result || c.status!=='PENDING')) {
         commandMessages.set(selected,c.ack_result ? `Lệnh #${tracked}: ${c.ack_result==='started' && (d.watering_events||[]).some(e=>e.command_seq===c.command_seq)?'Đã có bản ghi kết thúc lần bơm':c.ack_result==='mode_set'?`Đã chuyển sang ${c.mode}`:ackLabels[c.ack_result]||c.ack_result}.` : `Lệnh #${tracked}: ${c.status==='EXPIRED'?'Đã hết hạn, chưa được xác nhận thực hiện':c.status}.`);
         trackedCommands.delete(selected);
+        if(c.request_id)clearRequest(selected,c.request_id);
       }
     }
     const completed=(d.watering_events||[]).find(e=>commandMessages.get(selected)?.startsWith(`Lệnh #${e.command_seq}:`));
     if(completed)commandMessages.set(selected,`Lệnh #${completed.command_seq}: Đã kết thúc · ${completed.actual_ms===null?'thời lượng không xác định':`${completed.actual_ms} ms`} · ${completed.reason}.`);
     const pending=(d.commands||[]).some(c=>c.status==='PENDING'&&!c.ack_result);
-    const busy=sending.has(selected)||trackedCommands.has(selected)||pending;
+    const busy=sending.has(selected)||uncertainCommands.has(selected)||trackedCommands.has(selected)||pending;
     $('modeBtn').disabled=busy||$('modeSelect').value===controlState(d).mode;
     $('modeBtn').textContent=busy?'Đang chờ…':'Cập nhật';
     $('commandFeedback').textContent=commandMessages.get(selected)||(pending?'Có lệnh đang chờ ESP32 xác nhận.':'');
@@ -113,13 +126,21 @@
   const time = value => value ? new Date(value).toLocaleString('vi-VN',{hour12:false}) : '—';
   const basicHeaders = () => auth ? {'Authorization':`Basic ${auth}`,'Content-Type':'application/json'} : {'Content-Type':'application/json'};
   async function api(url, options={}) {
-    const response = await fetch(url,{...options,headers:{...basicHeaders(),...(options.headers||{})}});
-    if(response.status===401){ openLogin(); throw new Error('Cần đăng nhập quản trị viên để xem hoặc điều khiển.'); }
-    if(response.status===204) return null;
-    const body=await response.json().catch(()=>({}));
-    if(!response.ok) throw new Error(body.detail || `Lỗi HTTP ${response.status}`);
-    return body;
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),10000);
+    try {
+      const response = await fetch(url,{...options,signal:controller.signal,headers:{...basicHeaders(),...(options.headers||{})}});
+      if(response.status===401){openLogin();const error=new Error('Cần đăng nhập quản trị viên để xem hoặc điều khiển.');error.rejected=true;throw error;}
+      if(response.status===204)return null;
+      const body=await response.json();
+      if(!response.ok){const error=new Error(body.detail || `Lỗi HTTP ${response.status}`);error.status=response.status;error.rejected=response.status>=400&&response.status<500;throw error;}
+      return body;
+    } catch(error) {
+      if(controller.signal.aborted)throw new Error('Backend không phản hồi trong 10 giây');
+      throw error;
+    } finally {clearTimeout(timeout);}
   }
+
   function notice(message,type='warn') {const el=$('notice');el.textContent=message;el.className=`notice show ${type}`;}
   function clearNotice(){ $('notice').className='notice'; }
   function openLogin(){ $('loginModal').classList.add('open'); }
@@ -179,7 +200,7 @@
     const boolLabel=(value,yes,no)=>value===true||value===1?yes:value===false||value===0?no:'Chưa xác định';const hw=[['Phiên khởi động (boot_id)',t.boot_id],['Số thứ tự mẫu (sample_seq)',t.sample_seq],['Lệnh gần nhất (last_command_seq)',t.last_command_seq],['Sự kiện chờ gửi (queued_events)',t.queued_events],['Lỗi lưu trữ (storage_fault)',boolLabel(t.storage_fault,'Cảnh báo lỗi (true)','An toàn (false)')],['Đồng hồ hệ thống (clock_ready)',boolLabel(t.clock_ready,'Đã đồng bộ (true)','Chưa sẵn sàng (false)')],['Lỗi đồng hồ (clock_fault)',boolLabel(t.clock_fault,'Lỗi RTC (true)','Không có lỗi (false)')],['Mã hiệu chuẩn (calibration_id)',device.calibration_id||t.calibration_id]];
     $('hardwareGrid').innerHTML=hw.map(([a,b])=>`<div class="hardware-item"><span>${a}</span><strong>${escapeHtml(b)}</strong></div>`).join('');
     $('exportCsv').href=`/api/v1/web/devices/${encodeURIComponent(device.device_id)}/export-csv`;
-    const stats=d.watering_stats||{};$('statDaily').textContent=Number.isFinite(limits.quota_limit_starts)?(limits.quota_limit_starts===0?`${fmt(limits.quota_starts)} lần · Không giới hạn số lần`:`${fmt(limits.quota_starts)} / ${fmt(limits.quota_limit_starts)} lần`):'Chưa có hạn mức ESP32';$('statDailyNote').textContent=Number.isFinite(limits.quota_limit_ms)?`Đã dành ${fmt(limits.quota_reserved_ms/1000)} / ${fmt(limits.quota_limit_ms/1000)} giây · Đặt lại: ${limits.quota_window_ends_at?time(limits.quota_window_ends_at*1000):'chưa bắt đầu cửa sổ'}`:'Nạp firmware hỗ trợ báo hạn mức thực';$('statCount').textContent=`${fmt(stats.total_events)} lần`;$('statCountNote').textContent=`Thủ công: ${fmt(stats.manual_count)} · Tự động: ${fmt(stats.auto_count)}`;$('statDuration').textContent=`${Number(stats.total_actual_seconds||0).toLocaleString('vi-VN',{minimumFractionDigits:1,maximumFractionDigits:1})} giây`;$('statDurationMs').textContent=`${fmt(stats.total_actual_ms)} ms`;$('statWater').textContent=stats.flow_is_configured?`~${fmt(stats.estimated_water_ml)} ml`:'Chưa hiệu chuẩn';$('statFlowNote').textContent=stats.flow_is_configured?(stats.flow_note||'Ước tính theo lưu lượng cấu hình'):'Cần đo lượng nước thực tế; chưa quy đổi sang ml';
+    const stats=d.watering_stats||{};$('statDaily').textContent=Number.isFinite(limits.quota_limit_starts)?(limits.quota_limit_starts===0?`${fmt(limits.quota_starts)} lần · Không giới hạn số lần`:`${fmt(limits.quota_starts)} / ${fmt(limits.quota_limit_starts)} lần`):'Chưa có hạn mức ESP32';$('statDailyNote').textContent=Number.isFinite(limits.quota_limit_ms)?`${limits.quota_scope?`Ngân sách ${limits.quota_scope} · `:''}Đã dành ${fmt(limits.quota_reserved_ms/1000)} / ${fmt(limits.quota_limit_ms/1000)} giây · Đặt lại: ${limits.quota_window_ends_at?time(limits.quota_window_ends_at*1000):'chưa bắt đầu cửa sổ'}`:'Nạp firmware hỗ trợ báo hạn mức thực';$('statCount').textContent=`${fmt(stats.total_events)} lần`;$('statCountNote').textContent=`Thủ công: ${fmt(stats.manual_count)} · Tự động: ${fmt(stats.auto_count)}`;$('statDuration').textContent=`${Number(stats.total_actual_seconds||0).toLocaleString('vi-VN',{minimumFractionDigits:1,maximumFractionDigits:1})} giây`;$('statDurationMs').textContent=`${fmt(stats.total_actual_ms)} ms`;$('statWater').textContent=stats.flow_is_configured?`~${fmt(stats.estimated_water_ml)} ml`:'Chưa hiệu chuẩn';$('statFlowNote').textContent=stats.flow_is_configured?(stats.flow_note||'Ước tính theo lưu lượng cấu hình'):'Cần đo lượng nước thực tế; chưa quy đổi sang ml';
     const metrics=d.model_evaluation?.test_mae||{};$('modelMeta').textContent=d.model_evaluation?`Mô hình: ${metricNames[d.model_evaluation.selected_model]||d.model_evaluation.selected_model}${d.model_evaluation.selected_model==='linear_regression'?' (Hồi quy tuyến tính)':''} · Dự báo trước ${d.model_evaluation.horizon_minutes} phút · Nguồn dữ liệu: ${d.model_evaluation.data_origin}`:'Chưa có thông tin mô hình';$('academicLabel').textContent=`Nguồn: ${d.model_evaluation?.data_origin==='synthetic'?'Dữ liệu giả lập (synthetic)':d.model_evaluation?.data_origin||'chưa rõ'} · Khóa tự động bật bơm (can_trigger_pump=false)`;
     $('maeBody').innerHTML=Object.entries(metricNames).map(([key,label])=>`<tr><td>${label}${key===d.model_evaluation?.selected_model?' · Được chọn':''}</td><td>${escapeHtml(fmt(metrics[key]))}</td></tr>`).join('');
     const ai=d.latest_ai?.raw_output||d.latest_ai;showPrediction(ai);
@@ -189,22 +210,35 @@
   }
   function showPrediction(ai){if(!ai){$('aiState').textContent='Chưa chạy';$('predictionValue').textContent='—';$('predictionReason').textContent='Chưa có dự đoán được lưu.';return;}setPill($('aiState'),ai.status==='available'?'Có kết quả':'Không khả dụng',ai.status==='available'?'good':'bad');$('predictionValue').textContent=ai.status==='available'?`${fmt(ai.predicted_soil_pct)}%`:'—';$('predictionReason').textContent=ai.status==='available'?`Mô hình: Linear Regression (Hồi quy tuyến tính) · Dự báo trước ${ai.horizon_minutes} phút · Dữ liệu sẵn sàng lúc ${time(ai.available_at)} · Điều kiện: Không tưới thêm.`:`Lý do: ${ai.reason||'Không đủ điều kiện dữ liệu.'}`;}
   async function loadDevices(){const list=await api('/api/v1/web/devices');const select=$('deviceSelect');const old=selected;select.innerHTML=list.map(d=>{const label=d.device_id==='fittonia-bench'?'Cây Cẩm nhung (Fittonia) · Kịch bản Bench':d.device_id==='SIM-ONLY'?'Mô phỏng AI v2 (SIM-ONLY · 14.400 mẫu)':d.display_name||d.device_id;return `<option value="${escapeHtml(d.device_id)}">${escapeHtml(label)}</option>`;}).join('');if(!list.length){notice('Chưa có thiết bị. Chạy backend/seed_demo.py để nạp dữ liệu trình diễn.','warn');return;}selected=list.some(d=>d.device_id===old)?old:list[0].device_id;select.value=selected;await refresh();}
-  async function refresh(){if(!selected||refreshing)return;refreshing=true;const deviceId=selected;try{const d=await api(`/api/v1/web/devices/${encodeURIComponent(deviceId)}/dashboard`);if(selected===deviceId){refreshFailed=false;if(refreshNotice && $('notice').textContent===refreshNotice)clearNotice();refreshNotice=null;render(d);}}catch(e){if(selected===deviceId){refreshFailed=true;refreshNotice=e.message;notice(e.message,'error');if(dashboard)render(dashboard);}}finally{refreshing=false;if(selected!==deviceId)refresh();}}
+  async function refresh(){if(!selected||refreshing)return;refreshing=true;const deviceId=selected;try{const d=await api(`/api/v1/web/devices/${encodeURIComponent(deviceId)}/dashboard`);const saved=storedRequest(deviceId);if(saved?.body?.request_id && !(d.commands||[]).some(c=>c.request_id===saved.body.request_id)){try{const c=await api(`/api/v1/web/devices/${encodeURIComponent(deviceId)}/requests/${encodeURIComponent(saved.body.request_id)}`);d.commands=[...(d.commands||[]),c];}catch(e){if(e.status!==404)throw e;}}if(selected===deviceId){refreshFailed=false;if(refreshNotice && $('notice').textContent===refreshNotice)clearNotice();refreshNotice=null;render(d);}}catch(e){if(selected===deviceId){refreshFailed=true;refreshNotice=e.message;notice(e.message,'error');if(dashboard)render(dashboard);}}finally{refreshing=false;if(selected!==deviceId)refresh();}}
   async function createCommand(body){
     if(!auth){openLogin();return;}
     if(body.kind!=='STOP' && dashboard?.device?.device_id!==selected)return;
     if(body.kind==='WATER'&&$('waterBtn').disabled)return;
     const deviceId=selected;
-    if(body.kind!=='STOP' && (sending.has(deviceId)||trackedCommands.has(deviceId)||(dashboard?.commands||[]).some(c=>c.status==='PENDING'&&!c.ack_result)))return;
-    sending.add(deviceId);
+    if(body.kind!=='STOP' && (storedRequest(deviceId)||sending.has(deviceId)||uncertainCommands.has(deviceId)||trackedCommands.has(deviceId)||(dashboard?.commands||[]).some(c=>c.status==='PENDING'&&!c.ack_result)))return;
+    const expected=Math.max(Number(dashboard?.device?.last_command_seq||0),Number(dashboard?.latest?.last_command_seq||0),0,...(dashboard?.commands||[]).map(c=>c.command_seq));
+    let request;
+    try {request={body:{...body,request_id:requestId(),expected_seq:expected}};localStorage.setItem(requestKey(deviceId),JSON.stringify(request));}
+    catch {notice('Không lưu được mã yêu cầu; chưa gửi lệnh. Kiểm tra quyền lưu trữ trình duyệt.','error');return;}
+    sending.set(deviceId,request);
     commandMessages.set(deviceId,'Đang gửi lệnh…');
     if(dashboard)render(dashboard);
     try{
-      const r=await api(`/api/v1/web/devices/${encodeURIComponent(deviceId)}/commands`,{method:'POST',body:JSON.stringify(body)});
+      const r=await api(`/api/v1/web/devices/${encodeURIComponent(deviceId)}/commands`,{method:'POST',body:JSON.stringify(request.body)});
+      if(!Number.isSafeInteger(r?.command_seq)||r.command_seq<=0)throw new Error('Phản hồi thiếu mã lệnh hợp lệ');
+      if(sending.get(deviceId)!==request || storedRequest(deviceId)?.body?.request_id!==request.body.request_id)return;
+      uncertainCommands.delete(deviceId);
       trackedCommands.set(deviceId,r.command_seq);
       commandMessages.set(deviceId,`Đã gửi lệnh #${r.command_seq}; đang chờ ESP32 xác nhận. Không cần bấm lại.`);
-    }catch(e){commandMessages.set(deviceId,`Chưa xác nhận gửi lệnh: ${e.message}. Kiểm tra hàng đợi trước khi thử lại.`);}
-    finally{sending.delete(deviceId);if(selected===deviceId&&dashboard)render(dashboard);await refresh();}
+    }catch(e){
+      if(sending.get(deviceId)===request){
+        if(!e.rejected)uncertainCommands.set(deviceId,request);
+        else {clearRequest(deviceId,request.body.request_id);uncertainCommands.delete(deviceId);}
+        commandMessages.set(deviceId,`Chưa xác nhận gửi lệnh: ${e.message}. ${e.rejected?'Yêu cầu bị từ chối.':'Chưa rõ server đã nhận lệnh hay chưa; không gửi lại. Bấm STOP và chờ xác nhận OFF trước khi tiếp tục.'}`);
+      }
+    }
+    finally{if(sending.get(deviceId)===request)sending.delete(deviceId);if(selected===deviceId&&dashboard)render(dashboard);await refresh();}
   }
   $('modeBtn').onclick=()=>createCommand({kind:'SET_MODE',mode:$('modeSelect').value,ttl_sec:30});
   $('waterSeconds').oninput=()=>{if(dashboard)render(dashboard);};

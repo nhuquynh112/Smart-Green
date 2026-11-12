@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import sqlite3
+import threading
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -65,6 +66,7 @@ class Database:
     """Small DB-API adapter. SQLite is used by default; PostgreSQL uses psycopg2."""
 
     def __init__(self, url: str | None = None):
+        self._lock = threading.RLock()
         self.url = url or os.getenv("DATABASE_URL", "sqlite:///./smart_green.sqlite3")
         self.sqlite = self.url.startswith("sqlite:")
         self._memory = self.url in {"sqlite://", "sqlite:///:memory:"}
@@ -95,7 +97,8 @@ class Database:
     def connection(self) -> Iterator[Any]:
         if self.sqlite:
             assert self._conn is not None
-            yield self._conn
+            with self._lock:
+                yield self._conn
         else:
             conn = self._psycopg2.connect(self.url)
             try:
@@ -201,12 +204,14 @@ class Database:
                         "last_command_seq": "INTEGER NOT NULL DEFAULT 0",
                         "watering_history_complete": "INTEGER NOT NULL DEFAULT 0"},
             "watering_events": {"ended_at": "INTEGER"},
+            "commands": {"request_id": "TEXT", "request_fingerprint": "TEXT"},
         }
         for table, columns in migrations.items():
             existing = {row["name"] for row in self._conn.execute(f"PRAGMA table_info({table})")}
             for name, declaration in columns.items():
                 if name not in existing:
                     self._conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {declaration}")
+        self._conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS commands_request_id_idx ON commands(device_id,request_id) WHERE request_id IS NOT NULL")
         table_sql = self._conn.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='watering_events'").fetchone()["sql"] or ""
         if "'Scheduled'" not in table_sql or "'ManualCheck'" not in table_sql:
             self._conn.executescript("""
