@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "device_id": "garden-01",
+  "calibration_id": "soil-2511-979",
+  "data_origin": "real",
+  "coverage_start": "2026-11-12T14:55:00+07:00",
+  "coverage_end": "2026-11-12T22:55:00+07:00",
+  "history_complete": true,
+  "last_watered_at_before_start": "2026-11-11T12:14:00+07:00",
+  "events": [],
+  "unknown_intervals": [],
+  "notes": [
+    "User confirmed W02 14:55–22:55 Nov12, no watering or sensor movement; only prior watering was W01 Nov11 about four teaspoons, 12:13–12:14 per W01 journal. End time has minute precision; volume not measured.",
+    "Two boots observed; no watering during the interval per user, telemetry gaps are not filled. W02 is a continuation of the W01 watering cycle, not an independent watering cycle."
+  ]
+}

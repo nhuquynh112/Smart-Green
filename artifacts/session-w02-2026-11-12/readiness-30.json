@@ -1,0 +1,44 @@
+{
+  "input_rows": 479,
+  "horizon_minutes": 30,
+  "missing_columns": [],
+  "missing_values": {
+    "timestamp": 0,
+    "device_id": 0,
+    "calibration_id": 0,
+    "data_origin": 0,
+    "soil_pct": 4,
+    "temperature_c": 4,
+    "humidity_pct": 4,
+    "minutes_since_water": 4,
+    "water_event_count": 4
+  },
+  "training_pipeline_ready": true,
+  "real_world_evidence_sufficient": false,
+  "automatic_irrigation_approved": false,
+  "blockers": [],
+  "warnings": [
+    "Passing pipeline checks does not establish enough independent drying/watering cycles for scientific evaluation."
+  ],
+  "next_actions": [
+    "Calibrate soil using real dry/wet reference soil and collect valid soil_pct with a stable calibration_id.",
+    "Collect complete watering events to derive cumulative event counts and minutes since watering. Unknown stays missing, not zero."
+  ],
+  "quality": {
+    "input_rows": 479,
+    "grid_minutes": 479,
+    "usable_windows": 385,
+    "missing_minutes": 0,
+    "watering_counter_increments": 0,
+    "device_id": "garden-01",
+    "calibration_id": "soil-2511-979",
+    "data_origin": "real",
+    "time_basis": "device_timestamp",
+    "scope": "Only complete dry history and futures with no additional watering"
+  },
+  "split_rows": {
+    "train": 201,
+    "validation": 47,
+    "test": 77
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "artifacts/session-w02-2026-11-12/database-rows.jsonl": "f870aac406c2e09ef0aef23104eec5e651ff71262cf86f9ade7f0af8759858f5",
+  "artifacts/session-w02-2026-11-12/evaluate_frozen.py": "8154a059ebd0ef255b8fa3be179bf0391c766c0d0d37b429ef313b34dbfecad6",
+  "artifacts/session-w02-2026-11-12/evaluation-30/report.json": "cda690558c548b633d8e362fb0a27f9db2061308e58b10aaf62cc5b4abe8681f",
+  "artifacts/session-w02-2026-11-12/evaluation-30/test_predictions.csv": "b5591e0d3d71c7065885af1bc55c9b4afad17ac1415386824005865ce90a6487",
+  "artifacts/session-w02-2026-11-12/evaluation-60/report.json": "6242991d82bb356ecad13b8137fe36b7ffdbdfe7bbf95c142a4f9a22108dc029",
+  "artifacts/session-w02-2026-11-12/evaluation-60/test_predictions.csv": "22deed669afe24515d66030c821f0d061a0f05464189e2ede6dfe21b244d4986",
+  "artifacts/session-w02-2026-11-12/export_snapshot.py": "b6b9c0f3e21e7b00a339d27d9b2a459ecfba9a90dfd7ec844d9800c02bcab0f5",
+  "artifacts/session-w02-2026-11-12/minute-data.csv": "3ae6bc2e31736d2ad138d5f988cf8463197ff0c2d4cd293cec057d40b9d89fb1",
+  "artifacts/session-w02-2026-11-12/minute-data.quality.json": "9776ad1912a3e797b6e55ecb12bbb0fe5240c98f7c7823ecb0b79e54d22342da",
+  "artifacts/session-w02-2026-11-12/prepared/telemetry.csv": "eac4066f64e7702a985ba77981ae73113079613eb966866cb1138d267ce98b58",
+  "artifacts/session-w02-2026-11-12/prepared/telemetry.postgres.csv": "612ff1ab6a59c3fd732192e07b6c28fe6292ebede36bf5e7766a619b6b17feee",
+  "artifacts/session-w02-2026-11-12/prepared/telemetry.quality.json": "9dd43b006f64d71cd891894acbbb07459320ef64e451e7539738c72bf28584e2",
+  "artifacts/session-w02-2026-11-12/pump-events.json": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "artifacts/session-w02-2026-11-12/readiness-30.json": "07acf897e0c495595d28d8671e96e5be8d0c9baf6d901b80fb6cea324fba92d7",
+  "artifacts/session-w02-2026-11-12/readiness-60.json": "c4c0c2cd4526ca87964b02ecb3e4bb23e80f3cec25c38f94c12b2639879a8dd1",
+  "artifacts/session-w02-2026-11-12/telemetry.jsonl": "7f7e63cd4c7def54e5edec39814912a8fc4452d1562003e584166d554a4cccbb",
+  "artifacts/session-w02-2026-11-12/w02-evaluation.png": "95079d7fdcd915f8de4ee97bf6e0489b31b2c2ee6f264fd19dbb853edafcdd8f",
+  "artifacts/session-w02-2026-11-12/watering-journal.json": "325088a9106a7045558d17f882f385e79ecee53404f65f54781690b4c86b92fe",
+  "artifacts/session-w02-2026-11-12/write_report.py": "005064935b7333132f73a586e5ffdb40007d5bb63e0074aaaea2032e92e28031"
+}

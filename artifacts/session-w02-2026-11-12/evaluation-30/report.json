@@ -1,0 +1,114 @@
+{
+  "evaluation": "Frozen W01 candidate on all eligible W02 windows, no fitting or selection on W02",
+  "horizon_minutes": 30,
+  "quality": {
+    "input_rows": 479,
+    "grid_minutes": 479,
+    "usable_windows": 385,
+    "missing_minutes": 0,
+    "watering_counter_increments": 0,
+    "device_id": "garden-01",
+    "calibration_id": "soil-2511-979",
+    "data_origin": "real",
+    "time_basis": "device_timestamp",
+    "scope": "Only complete dry history and futures with no additional watering"
+  },
+  "feature_version": "v2-watering-events",
+  "selected_on_w01_validation": "persistence",
+  "evaluated_models": [
+    "persistence",
+    "linear_extrapolation"
+  ],
+  "not_evaluated": "Unselected fitted W01 ML models were not saved; do not refit or claim their W02 scores.",
+  "rows": 385,
+  "falling_rows": 92,
+  "first_feature_time": "2026-11-12T08:11:00+00:00",
+  "last_label_time": "2026-11-12T15:54:00+00:00",
+  "metrics": {
+    "persistence": {
+      "mae_pp": 0.30187179740259734,
+      "falling_mae_pp": 0.18305148369565216
+    },
+    "linear_extrapolation": {
+      "mae_pp": 0.5689025168831169,
+      "falling_mae_pp": 0.6754457771739132
+    }
+  },
+  "feature_ranges": {
+    "soil_pct": {
+      "w01_fit_min": 3.263708,
+      "w01_fit_max": 4.830287,
+      "w02_min": 2.4151435,
+      "w02_max": 6.4947785,
+      "outside_fit_range_rows": 285
+    },
+    "soil_lag_5": {
+      "w01_fit_min": 3.263708,
+      "w01_fit_max": 4.830287,
+      "w02_min": 2.219321,
+      "w02_max": 6.4947785,
+      "outside_fit_range_rows": 282
+    },
+    "soil_lag_15": {
+      "w01_fit_min": 3.263708,
+      "w01_fit_max": 17.362924,
+      "w02_min": 0.1631855,
+      "w02_max": 6.4947785,
+      "outside_fit_range_rows": 54
+    },
+    "slope_15": {
+      "w01_fit_min": -0.8659703666666666,
+      "w01_fit_max": 0.04569193333333341,
+      "w02_min": -0.0413403,
+      "w02_max": 0.15013053333333334,
+      "outside_fit_range_rows": 24
+    },
+    "temperature_c": {
+      "w01_fit_min": 32.150000000000006,
+      "w01_fit_max": 32.7,
+      "w02_min": 30.6,
+      "w02_max": 32.5,
+      "outside_fit_range_rows": 234
+    },
+    "humidity_pct": {
+      "w01_fit_min": 62.5,
+      "w01_fit_max": 68.30000000000001,
+      "w02_min": 65.9,
+      "w02_max": 71.1,
+      "outside_fit_range_rows": 150
+    },
+    "minutes_since_water": {
+      "w01_fit_min": 17.0,
+      "w01_fit_max": 275.0,
+      "w02_min": 1618.0,
+      "w02_max": 2051.0,
+      "outside_fit_range_rows": 385
+    },
+    "hour_sin": {
+      "w01_fit_min": 0.544639035015027,
+      "w01_fit_max": 1.0,
+      "w02_min": -0.7771459614569711,
+      "w02_max": 0.8410390129643925,
+      "outside_fit_range_rows": 325
+    },
+    "hour_cos": {
+      "w01_fit_min": -0.8386705679454242,
+      "w01_fit_max": 0.1305261922200517,
+      "w02_min": -1.0,
+      "w02_max": -0.5409744713679938,
+      "outside_fit_range_rows": 253
+    }
+  },
+  "dataset_sha256": "3ae6bc2e31736d2ad138d5f988cf8463197ff0c2d4cd293cec057d40b9d89fb1",
+  "candidate_path": "artifacts/ai-train-w01-20261112/horizon-30/candidate.joblib",
+  "candidate_sha256": "c1ea85ba5a379f454cec17fefff512fe1367b63496d9bc8f8818ddf76db88f4e",
+  "w01_versions": {
+    "python": "3.12.3",
+    "numpy": "2.5.4",
+    "pandas": "3.1.1",
+    "sklearn": "1.9.1",
+    "joblib": "1.6.0"
+  },
+  "automatic_irrigation_approved": false,
+  "limitation": "W02 is a later recording of the same watering cycle, not an independent watering cycle. No interpolation across outage or reboot."
+}
