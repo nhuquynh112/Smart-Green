@@ -1,3 +1,7 @@
 # Preserve exact W02 snapshot bytes so committed files match the evidence hashes.
 artifacts/session-w02-2026-11-12/** -text
 artifacts/session-w02-2026-11-12/prepared/*.csv whitespace=cr-at-eol
+
+# Preserve W03 evidence hashes and CSV line endings.
+artifacts/session-w03-2026-11-13/** -text
+artifacts/session-w03-2026-11-13/**/*.csv whitespace=cr-at-eol

@@ -1,0 +1,12 @@
+{
+  "start_inclusive": "2026-11-13T10:00:00+07:00",
+  "end_inclusive": "2026-11-13T11:54:44.461390+00:00",
+  "rows": 1066,
+  "pump_events": 0,
+  "journal_status": "confirmed",
+  "note": "Original export bounds retained. User confirmed W03 10:00–18:00 with no changes or additional watering. Rows received after session end are preserved in snapshot only, excluded from evaluation. No claim about USB disconnection time.",
+  "session_start_inclusive": "2026-11-13T10:00:00+07:00",
+  "session_end_exclusive": "2026-11-13T18:00:00+07:00",
+  "session_rows": 956,
+  "outside_session_rows": 110
+}
