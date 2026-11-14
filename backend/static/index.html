@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#102b22">
+  <title>Smart Garden · Bảng điều khiển</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <style>
+    :root{--ink:#172b23;--muted:#75847c;--paper:#f3f6f2;--card:#fff;--line:#e5ebe6;--green:#1d7553;--mint:#e7f4ec;--amber:#f3b844;--red:#bf4b43;--shadow:0 10px 28px rgba(26,55,41,.055)}
+    *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font:14px 'DM Sans',sans-serif}button,input,select{font:inherit}button{cursor:pointer}.shell{min-height:100vh}.topbar{height:72px;background:#102b22;color:#f7fff9;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(18px,4vw,58px);position:sticky;top:0;z-index:4}.brand{display:flex;align-items:center;gap:12px;font:700 17px Manrope,sans-serif;letter-spacing:-.3px}.brandmark{width:34px;height:34px;background:#d6f0dc;color:#174b34;border-radius:11px;display:grid;place-items:center;font-size:20px}.brand small{display:block;color:#a9c1b2;font:500 11px 'DM Sans',sans-serif;letter-spacing:.2px;margin-top:2px}.top-actions{display:flex;gap:10px;align-items:center}.top-date{color:#bdd1c4;font-size:12px;margin-right:8px}.btn{border:0;border-radius:10px;padding:10px 15px;font-weight:700;transition:.18s}.btn:hover{transform:translateY(-1px)}.btn-primary{background:var(--green);color:white}.btn-top{background:#234539;color:white;border:1px solid #3d6050}.btn-quiet{background:#edf3ee;color:#315543}.btn-danger{background:#fcecea;color:#a43e37}.btn:disabled{cursor:not-allowed;opacity:.45;transform:none}.wrap{max-width:1440px;margin:auto;padding:28px clamp(16px,4vw,58px) 56px}.heading{display:flex;justify-content:space-between;gap:18px;align-items:end;margin:8px 0 22px}.eyebrow{text-transform:uppercase;letter-spacing:1.4px;color:var(--green);font-size:10px;font-weight:800}.heading h1{font:800 clamp(25px,3vw,34px) Manrope,sans-serif;letter-spacing:-1.2px;margin:7px 0 5px}.heading p{color:var(--muted);margin:0}.device-select{min-width:250px;border:1px solid var(--line);background:#fff;padding:12px 14px;border-radius:12px;color:var(--ink);box-shadow:var(--shadow)}.notice{display:none;padding:12px 15px;border-radius:11px;margin:0 0 18px;font-weight:600}.notice.show{display:block}.notice.warn{background:#fff4d9;color:#785612}.notice.error{background:#fff0ee;color:#a43e37}.notice.ok{background:#e5f5eb;color:#286343}.grid{display:grid;gap:15px}.sensors{grid-template-columns:repeat(5,minmax(0,1fr));margin-bottom:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:var(--shadow)}.sensor{min-height:152px;position:relative;overflow:hidden}.sensor-head{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:12px;font-weight:700}.sensor-icon{width:31px;height:31px;border-radius:10px;display:grid;place-items:center;background:#edf6ef;color:var(--green);font-size:16px}.sensor-value{font:800 27px Manrope,sans-serif;letter-spacing:-.8px;margin:15px 0 2px}.sensor-value span{font-size:14px;font-weight:600;color:#748179;letter-spacing:0}.sensor-meta{color:var(--muted);font-size:11px}.status-pill{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:5px 9px;background:#eef1ef;color:#5b6a62;font-size:10px;font-weight:800}.status-pill.good{background:#e7f5eb;color:#267348}.status-pill.bad{background:#fff0ed;color:#b1483c}.dot{width:7px;height:7px;border-radius:50%;background:currentColor}.main-grid{grid-template-columns:minmax(0,1.65fr) minmax(300px,.9fr);align-items:stretch}.panel-title{font:800 16px Manrope,sans-serif;letter-spacing:-.3px;margin:0}.panel-sub{font-size:11px;color:var(--muted);margin:5px 0 0}.panel-head{display:flex;align-items:start;justify-content:space-between;gap:12px;margin-bottom:18px}.chart-card{min-height:360px}.chart-box{height:280px}.control-card{display:flex;flex-direction:column}.control-state{display:flex;justify-content:space-between;align-items:center;background:#f5f8f5;padding:12px;border-radius:12px;margin-bottom:16px}.control-state span{color:var(--muted);font-size:12px}.control-state strong{font:700 13px Manrope}.field-label{font-size:11px;font-weight:800;color:#58675e;margin:4px 0 7px}.select,.input{width:100%;border:1px solid var(--line);border-radius:10px;background:#fff;padding:11px 12px;outline:none;color:var(--ink)}.select:focus,.input:focus{border-color:#83b396;box-shadow:0 0 0 3px #e7f4ec}.control-row{display:grid;grid-template-columns:1fr auto;gap:9px;margin:8px 0 15px}.help{font-size:11px;color:var(--muted);line-height:1.55;margin:10px 0 14px}.lock-message{border-radius:10px;padding:10px 12px;background:#fff1eb;color:#a34837;font-size:11px;line-height:1.45;margin-bottom:14px}.ai-card{margin-top:16px}.ai-layout{display:grid;grid-template-columns:1fr 1fr;gap:22px}.prediction{background:#f1f8f2;border:1px solid #dceee0;border-radius:14px;padding:16px}.prediction .big{font:800 30px Manrope;color:#1e704b;margin:13px 0 3px}.prediction p{margin:0;color:var(--muted);font-size:11px;line-height:1.6}.academic{display:inline-block;background:#fff1d6;color:#805d16;font-size:10px;font-weight:800;padding:6px 9px;border-radius:99px;margin-top:12px}.mae-table,.data-table{width:100%;border-collapse:collapse;text-align:left}.mae-table th,.data-table th{font-size:10px;color:var(--muted);font-weight:800;padding:8px 7px;border-bottom:1px solid var(--line)}.mae-table td,.data-table td{font-size:11px;padding:9px 7px;border-bottom:1px solid #eef1ee}.mae-table td:last-child{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}.lower-grid{grid-template-columns:1fr 1fr;margin-top:16px}.table-wrap{overflow:auto;max-height:300px}.data-table{min-width:500px}.data-table td{white-space:nowrap}.empty{text-align:center;color:var(--muted);padding:24px 10px}.hardware{margin-top:16px}.hardware-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}.hardware-item{border-radius:11px;background:#f6f8f6;padding:12px}.hardware-item span{font-size:10px;color:var(--muted);display:block;margin-bottom:6px}.hardware-item strong{font-size:12px}.footer{color:#859289;text-align:center;font-size:10px;padding-top:24px}.modal-backdrop{position:fixed;inset:0;background:#0e211bb0;display:none;align-items:center;justify-content:center;z-index:10;padding:20px}.modal-backdrop.open{display:flex}.modal{background:#fff;border-radius:18px;padding:24px;width:min(400px,100%);box-shadow:0 25px 80px #08150f55}.modal h2{font:800 20px Manrope;margin:0 0 6px}.modal p{font-size:12px;color:var(--muted);margin:0 0 17px}.modal .input{margin-bottom:10px}.modal-actions{display:flex;justify-content:end;gap:9px;margin-top:8px}
+    .stats-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:0 0 14px}.stat-box{background:#f6f8f6;border:1px solid #edf1ed;border-radius:11px;padding:11px 12px;min-height:76px}.stat-box span{display:block;color:var(--muted);font-size:10px;font-weight:700;margin-bottom:7px}.stat-box strong{font:800 15px Manrope,sans-serif}.stat-box small{display:block;color:var(--muted);font-size:9px;margin-top:4px}.export-btn{font-size:10px;padding:7px 10px;text-decoration:none;white-space:nowrap}
+    @media(max-width:1050px){.sensors{grid-template-columns:repeat(3,1fr)}.main-grid{grid-template-columns:1fr}.control-card{min-height:0}}@media(max-width:700px){.topbar{height:64px}.top-date{display:none}.heading{align-items:stretch;flex-direction:column}.device-select{width:100%}.sensors{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.sensor{min-height:136px;padding:14px}.sensor-value{font-size:23px}.ai-layout,.lower-grid{grid-template-columns:1fr}.hardware-grid,.stats-grid{grid-template-columns:repeat(2,1fr)}.card{padding:15px}.chart-card{min-height:320px}.chart-box{height:245px}}
+  </style>
+</head>
+<body>
+<div class="shell">
+  <header class="topbar">
+    <div class="brand"><div class="brandmark">✿</div><div>SMART GARDEN<small>Hệ thống giám sát & tưới cây thông minh</small></div></div>
+    <div class="top-actions"><span id="clock" class="top-date"></span><button class="btn btn-top" id="loginBtn">Đăng nhập quản trị</button></div>
+  </header>
+  <main class="wrap">
+    <section class="heading"><div><div class="eyebrow">Trạm giám sát IoT</div><h1>Khu vườn của bạn</h1><p>Theo dõi môi trường, điều khiển thiết bị và xem phân tích AI.</p></div><select id="deviceSelect" class="device-select" aria-label="Chọn thiết bị"><option>Đang tải thiết bị…</option></select></section>
+    <div id="notice" class="notice"></div>
+    <section class="grid sensors">
+      <article class="card sensor"><div class="sensor-head"><span>Độ ẩm đất</span><span class="sensor-icon">◉</span></div><div class="sensor-value" id="soilValue">—<span> %</span></div><div class="sensor-meta" id="soilMeta">ADC — · Chưa có dữ liệu</div><div style="margin-top:10px" id="soilStatus"></div></article>
+      <article class="card sensor"><div class="sensor-head"><span>Nhiệt độ</span><span class="sensor-icon">♨</span></div><div class="sensor-value" id="tempValue">—<span> °C</span></div><div class="sensor-meta">DHT22 · Không khí</div></article>
+      <article class="card sensor"><div class="sensor-head"><span>Độ ẩm không khí</span><span class="sensor-icon">≈</span></div><div class="sensor-value" id="airValue">—<span> %</span></div><div class="sensor-meta">DHT22 · Môi trường</div></article>
+      <article class="card sensor"><div class="sensor-head"><span>Ánh sáng</span><span class="sensor-icon">☼</span></div><div class="sensor-value" id="lightValue">—</div><div class="sensor-meta">ADC thô · Chưa quy đổi lux</div></article>
+      <article class="card sensor"><div class="sensor-head"><span>Phao mực nước</span><span class="sensor-icon">⌁</span></div><div class="sensor-value" style="font-size:18px;margin-top:22px" id="tankValue">Chưa rõ</div><div class="sensor-meta">GPIO26 · Công tắc phao</div><div style="margin-top:10px" id="tankStatus"></div></article>
+    </section>
+    <section class="grid main-grid">
+      <article class="card chart-card"><div class="panel-head"><div><h2 class="panel-title">Diễn biến cảm biến</h2><p class="panel-sub">Độ ẩm đất và nhiệt độ · 30 phút tính đến mẫu đo mới nhất</p></div><span id="updatedAt" class="status-pill">Chưa đồng bộ</span></div><div class="chart-box"><canvas id="historyChart"></canvas></div></article>
+      <article class="card control-card"><div class="panel-head"><div><h2 class="panel-title">Điều khiển thiết bị</h2><p class="panel-sub">Lệnh có hiệu lực tối đa 60 giây</p></div><span id="onlinePill" class="status-pill">Offline</span></div>
+        <div class="control-state"><span>Chế độ hiện tại</span><strong id="modeNow">—</strong></div>
+        <p id="commandFeedback" class="field-label" role="status" aria-live="polite"></p><label class="field-label" for="modeSelect">Chọn chế độ</label><div class="control-row"><select id="modeSelect" class="select"><option>OFF</option><option>MANUAL</option><option>AUTO</option></select><button id="modeBtn" class="btn btn-quiet admin-action">Cập nhật</button></div>
+        <label class="field-label" for="waterSeconds">Tưới thủ công (giây)</label><div class="control-row"><input id="waterSeconds" class="input" type="number" min="0.1" max="1" step="0.1" value="0.5"><button id="waterBtn" class="btn btn-primary admin-action">Tưới ngay</button></div>
+        <div id="waterLock" class="lock-message">Đang kiểm tra điều kiện cảm biến.</div>
+        <button id="stopBtn" class="btn btn-danger admin-action">Dừng bơm · STOP</button>
+        <p class="help">Backend kiểm tra phao, cảm biến đất và giới hạn xung trước khi xếp lệnh. ESP32 tiếp tục kiểm tra an toàn tại thiết bị.</p>
+      </article>
+    </section>
+    <section class="card ai-card"><div class="panel-head"><div><h2 class="panel-title">AI hỗ trợ quyết định tưới</h2><p class="panel-sub">Dự đoán độ ẩm đất trong 30 phút tiếp theo nếu không tưới thêm</p><label class="panel-sub" style="display:block;margin-top:10px"><input id="historyComplete" type="checkbox"> Tôi đã đối soát đầy đủ lịch sử tưới của thiết bị này</label></div><button id="predictBtn" class="btn btn-primary admin-action">Chạy dự đoán AI</button></div>
+      <div class="ai-layout"><div class="prediction"><span id="aiState" class="status-pill">Chưa chạy</span><div class="big" id="predictionValue">—</div><p id="predictionReason">Dự đoán và trạng thái an toàn sẽ xuất hiện tại đây.</p><span id="academicLabel" class="academic">Dữ liệu synthetic · can_trigger_pump: false</span></div>
+        <div><div class="panel-head" style="margin-bottom:5px"><div><h3 class="panel-title" style="font-size:13px">So sánh mô hình</h3><p id="modelMeta" class="panel-sub">Đang tải thông tin đánh giá…</p></div></div><table class="mae-table"><thead><tr><th>Mô hình</th><th>MAE kiểm thử (điểm %)</th></tr></thead><tbody id="maeBody"><tr><td colspan="2" class="empty">Chưa có báo cáo mô hình</td></tr></tbody></table><p class="help">Kết quả hiện tại dùng dữ liệu giả lập để kiểm tra pipeline; không đại diện cho độ chính xác trên cây thật.</p></div></div>
+    </section>
+    <section class="grid lower-grid">
+      <article class="card"><div class="panel-head"><div><h2 class="panel-title">Lịch sử chạy bơm</h2><p class="panel-sub">Thời lượng do firmware ghi nhận, chưa xác nhận lưu lượng hoặc chuyển động của bơm</p></div><a id="exportCsv" class="btn btn-quiet export-btn" href="#">⬇ Xuất CSV cảm biến</a></div><div class="stats-grid"><div class="stat-box"><span>Hạn mức trên ESP32</span><strong id="statDaily">—</strong><small id="statDailyNote">Giới hạn an toàn</small></div><div class="stat-box"><span>Tổng lần chạy bơm</span><strong id="statCount">—</strong><small id="statCountNote">Thủ công · Tự động</small></div><div class="stat-box"><span>Tổng thời gian bơm</span><strong id="statDuration">—</strong><small id="statDurationMs">—</small></div><div class="stat-box"><span>Lượng nước ước tính</span><strong id="statWater">—</strong><small id="statFlowNote">—</small></div></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Thời điểm</th><th>Nguồn</th><th>Lý do</th><th>Thời lượng ghi nhận</th></tr></thead><tbody id="eventsBody"><tr><td colspan="4" class="empty">Chưa có sự kiện</td></tr></tbody></table></div></article>
+      <article class="card"><div class="panel-head"><div><h2 class="panel-title">Hàng đợi lệnh</h2><p class="panel-sub">Trạng thái thực thi và xác nhận từ ESP32</p></div></div><div class="table-wrap"><table class="data-table"><thead><tr><th>#</th><th>Lệnh</th><th>Trạng thái</th><th>Kết quả ACK</th><th>Hết hạn</th></tr></thead><tbody id="commandsBody"><tr><td colspan="5" class="empty">Chưa có lệnh</td></tr></tbody></table></div></article>
+    </section>
+    <section class="card hardware"><div class="panel-head"><div><h2 class="panel-title">Trạng thái thiết bị & đồng bộ</h2><p class="panel-sub">Thông tin phiên firmware và hàng đợi lưu bền</p></div><span id="demoTag" class="status-pill">—</span></div><div class="hardware-grid" id="hardwareGrid"></div></section>
+    <div class="footer">Smart Garden · ESP32 · FastAPI · PostgreSQL · Machine Learning</div>
+  </main>
+</div>
+<div id="loginModal" class="modal-backdrop"><form class="modal" id="loginForm"><h2>Đăng nhập quản trị</h2><p>Thông tin đăng nhập được xác thực bởi backend.</p><input class="input" id="username" autocomplete="username" placeholder="Tên đăng nhập" value="admin"><input class="input" id="password" type="password" autocomplete="current-password" placeholder="Mật khẩu"><div class="modal-actions"><button type="button" class="btn btn-quiet" id="cancelLogin">Huỷ</button><button type="submit" class="btn btn-primary">Đăng nhập</button></div></form></div>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  let auth = sessionStorage.getItem('sg_auth') || '';
+  let selected = '';
+  let chart;
+  let dashboard;
+  let refreshing = false;
+  let refreshFailed = false;
+  let refreshNotice = null;
+  const sending = new Map();
+  const uncertainCommands = new Map();
+  const trackedCommands = new Map();
+  const commandMessages = new Map();
+  const requestKey=id=>`sg_pending_v2:${id}`;
+  function storedRequest(id){try{return JSON.parse(localStorage.getItem(requestKey(id))||'null');}catch{return null;}}
+  function clearRequest(id,requestId){if(storedRequest(id)?.body?.request_id===requestId)localStorage.removeItem(requestKey(id));}
+  function requestId(){const bytes=new Uint8Array(16);crypto.getRandomValues(bytes);return Array.from(bytes,b=>b.toString(16).padStart(2,'0')).join('');}
+  const ackLabels = {mode_set:'Đã đổi chế độ', started:'ESP32 xác nhận đã bật đầu ra bơm', stopped:'ESP32 xác nhận đã tắt đầu ra bơm', cooldown:'Chưa tưới: đang trong thời gian nghỉ giữa hai lần bơm', mode_or_ai_ceiling:'Chưa tưới: thiết bị chưa ở chế độ MANUAL', sensor_tank_or_wet:'Chưa tưới: điều kiện cảm biến, phao hoặc độ ẩm chưa đạt', not_commissioned_or_fault:'Chưa tưới: thiết bị chưa được xác nhận phần cứng hoặc có lỗi', quota:'Chưa tưới: đã đạt giới hạn tưới', expired_or_clock:'Lệnh hết hạn hoặc đồng hồ chưa hợp lệ'};
+  function controlState(d) {
+    const t=d.latest||{};
+    let payload=t.payload||{};
+    if(typeof payload==='string'){try{payload=JSON.parse(payload);}catch{payload={};}}
+    let mode=t.mode||'OFF', modeFromAck=false;
+    // Use only a newer, successful acknowledgement from this boot window.
+    const bootStart=new Date(t.received_at).getTime()-Number(t.uptime_ms||0);
+    const confirmed=(d.commands||[]).find(c=>c.command_seq>Number(t.last_command_seq||0)
+      && c.issued_at*1000>=bootStart && c.ack_result
+      && ((c.kind==='SET_MODE'&&c.ack_result==='mode_set')||((c.kind==='STOP'||(c.kind==='SET_MODE'&&c.mode==='OFF'))&&c.ack_result==='stopped')));
+    if(confirmed){mode=confirmed.kind==='STOP'?'OFF':confirmed.mode;modeFromAck=true;}
+    // Countdown starts at reception, so transport delay cannot unlock early.
+    const elapsed=Math.max(0,Date.now()-new Date(t.received_at).getTime());
+    const remaining=Number.isFinite(payload.cooldown_remaining_ms)?Math.max(0,payload.cooldown_remaining_ms-elapsed):null;
+    const lastWater=(d.commands||[]).find(c=>c.kind==='WATER'&&c.ack_result);
+    return {mode,modeFromAck,remaining,payload,lastWater,unknownCooldown:remaining===null&&lastWater?.ack_result==='cooldown'};
+  }
+  function commandState(d) {
+    const stored=storedRequest(selected);
+    if(!stored){uncertainCommands.delete(selected);if(!sending.has(selected))trackedCommands.delete(selected);}
+    if(stored?.body?.request_id){
+      const found=(d.commands||[]).find(c=>c.request_id===stored.body.request_id);
+      if(found){trackedCommands.set(selected,found.command_seq);uncertainCommands.delete(selected);}
+      else if(!trackedCommands.has(selected)&&!sending.has(selected)) {uncertainCommands.set(selected,stored);commandMessages.set(selected,'Đang đối soát yêu cầu đã lưu; không bấm tưới lại. STOP vẫn khả dụng.');}
+    }
+    const tracked=trackedCommands.get(selected);
+    if(tracked) {
+      const c=(d.commands||[]).find(c=>c.command_seq===tracked);
+      if(c && (c.ack_result || c.status!=='PENDING')) {
+        commandMessages.set(selected,c.ack_result ? `Lệnh #${tracked}: ${c.ack_result==='started' && (d.watering_events||[]).some(e=>e.command_seq===c.command_seq)?'Đã có bản ghi kết thúc lần bơm':c.ack_result==='mode_set'?`Đã chuyển sang ${c.mode}`:ackLabels[c.ack_result]||c.ack_result}.` : `Lệnh #${tracked}: ${c.status==='EXPIRED'?'Đã hết hạn, chưa được xác nhận thực hiện':c.status}.`);
+        trackedCommands.delete(selected);
+        if(c.request_id)clearRequest(selected,c.request_id);
+      }
+    }
+    const completed=(d.watering_events||[]).find(e=>commandMessages.get(selected)?.startsWith(`Lệnh #${e.command_seq}:`));
+    if(completed)commandMessages.set(selected,`Lệnh #${completed.command_seq}: Đã kết thúc · ${completed.actual_ms===null?'thời lượng không xác định':`${completed.actual_ms} ms`} · ${completed.reason}.`);
+    const pending=(d.commands||[]).some(c=>c.status==='PENDING'&&!c.ack_result);
+    const busy=sending.has(selected)||uncertainCommands.has(selected)||trackedCommands.has(selected)||pending;
+    $('modeBtn').disabled=busy||$('modeSelect').value===controlState(d).mode;
+    $('modeBtn').textContent=busy?'Đang chờ…':'Cập nhật';
+    $('commandFeedback').textContent=commandMessages.get(selected)||(pending?'Có lệnh đang chờ ESP32 xác nhận.':'');
+    return busy;
+  }
+  let modeSelectionDevice = null;
+  let modeSelectionEdited = false;
+  const metricNames = {persistence:'Baseline 1: Giữ nguyên (Persistence)',linear_extrapolation:'Baseline 2: Ngoại suy tuyến tính (Linear Extrapolation)',linear_regression:'Linear Regression',random_forest:'Random Forest'};
+  const fmt = value => value === null || value === undefined || value === '' ? '—' : Number.isFinite(Number(value)) ? Number(value).toLocaleString('vi-VN',{maximumFractionDigits:2}) : value;
+  const escapeHtml = value => String(value??'—').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const time = value => value ? new Date(value).toLocaleString('vi-VN',{hour12:false}) : '—';
+  const basicHeaders = () => auth ? {'Authorization':`Basic ${auth}`,'Content-Type':'application/json'} : {'Content-Type':'application/json'};
+  async function api(url, options={}) {
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),10000);
+    try {
+      const response = await fetch(url,{...options,signal:controller.signal,headers:{...basicHeaders(),...(options.headers||{})}});
+      if(response.status===401){openLogin();const error=new Error('Cần đăng nhập quản trị viên để xem hoặc điều khiển.');error.rejected=true;throw error;}
+      if(response.status===204)return null;
+      const body=await response.json();
+      if(!response.ok){const error=new Error(body.detail || `Lỗi HTTP ${response.status}`);error.status=response.status;error.rejected=response.status>=400&&response.status<500;throw error;}
+      return body;
+    } catch(error) {
+      if(controller.signal.aborted)throw new Error('Backend không phản hồi trong 10 giây');
+      throw error;
+    } finally {clearTimeout(timeout);}
+  }
+
+  function notice(message,type='warn') {const el=$('notice');el.textContent=message;el.className=`notice show ${type}`;}
+  function clearNotice(){ $('notice').className='notice'; }
+  function openLogin(){ $('loginModal').classList.add('open'); }
+  $('loginBtn').onclick=()=>{if(auth){auth='';sessionStorage.removeItem('sg_auth');$('loginBtn').textContent='Đăng nhập quản trị';notice('Đã đăng xuất quản trị.','ok');}else openLogin();};
+  $('cancelLogin').onclick=()=>$('loginModal').classList.remove('open');
+  $('loginForm').onsubmit=async event=>{event.preventDefault();auth=btoa(`${$('username').value}:${$('password').value}`);try{await api('/api/v1/web/auth/check');sessionStorage.setItem('sg_auth',auth);$('loginModal').classList.remove('open');$('loginBtn').textContent='Đăng xuất quản trị';notice('Đăng nhập quản trị thành công.','ok');await refresh();}catch(e){auth='';sessionStorage.removeItem('sg_auth');notice(e.message,'error');}};
+  $('deviceSelect').onchange=()=>{selected=$('deviceSelect').value;$('waterBtn').disabled=true;$('modeBtn').disabled=true;refresh();};
+  $('modeSelect').onchange=()=>{modeSelectionEdited=true;if(dashboard)render(dashboard);};
+  function setPill(el,text,kind=''){el.textContent=text;el.className=`status-pill ${kind}`;}
+  function renderChart(history, prediction){
+    if(!window.Chart)return;
+    const ordered=history.filter(x=>Number.isFinite(Date.parse(x.measured_at))).sort((a,b)=>Date.parse(a.measured_at)-Date.parse(b.measured_at));
+    const end=ordered.length?Date.parse(ordered[ordered.length-1].measured_at):Date.now();
+    const start=end-30*60*1000;
+    const points=ordered.filter(x=>Date.parse(x.measured_at)>=start);
+    const soil=[],temp=[];
+    let previous=null;
+    for(const point of points){
+      const x=Date.parse(point.measured_at);
+      if(previous!==null && x-previous>90000){soil.push({x:previous+1,y:null});temp.push({x:previous+1,y:null});}
+      soil.push({x,y:point.soil_valid?point.soil_pct:null});
+      temp.push({x,y:point.air_valid?point.temperature_c:null});
+      previous=x;
+    }
+    // Prediction is shown separately: it must not appear as an observed sample.
+    const config={type:'line',data:{datasets:[{label:'Độ ẩm đất (%)',data:soil,borderColor:'#25845b',backgroundColor:'#dff0e5',fill:true,tension:0,spanGaps:false,pointRadius:2,yAxisID:'y'},{label:'Nhiệt độ (°C)',data:temp,borderColor:'#e0a03e',tension:0,spanGaps:false,pointRadius:1,yAxisID:'y1'}]},options:{animation:false,responsive:true,maintainAspectRatio:false,interaction:{mode:'nearest',intersect:false},plugins:{tooltip:{callbacks:{title:items=>items.length?time(items[0].parsed.x):''}},legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:8,font:{family:'DM Sans',size:11}}}},scales:{x:{type:'linear',min:start,max:end,grid:{display:false},ticks:{maxTicksLimit:9,font:{size:10},callback:value=>new Date(value).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}},y:{position:'left',title:{display:true,text:'Độ ẩm đất (%)'},min:0,max:100,grid:{color:'#edf1ed'}},y1:{position:'right',title:{display:true,text:'Nhiệt độ (°C)'},grid:{drawOnChartArea:false}}}}};
+    if(chart){chart.data=config.data;chart.options=config.options;chart.update();}else chart=new Chart($('historyChart'),config);
+  }
+  function render(d){
+    dashboard=d;const device=d.device||{}, t=d.latest||{}, control=controlState(d);
+    $('soilValue').innerHTML=`${escapeHtml(fmt(t.soil_pct))}<span> %</span>`;const dry=device.dry_raw??2511,wet=device.wet_raw??979;$('soilMeta').textContent=`ADC ${fmt(t.soil_raw)} · Mốc khô/ướt: ${fmt(dry)} / ${fmt(wet)}`;
+    $('soilStatus').innerHTML=`<span class="status-pill ${t.soil_valid?'good':'bad'}"><i class="dot"></i>${t.soil_valid?'Cảm biến hợp lệ':'Cảm biến lỗi'}</span>`;
+    $('tempValue').innerHTML=`${escapeHtml(fmt(t.temperature_c))}<span> °C</span>`;$('airValue').innerHTML=`${escapeHtml(fmt(t.humidity_pct))}<span> %</span>`;$('lightValue').textContent=fmt(t.light_raw);
+    const water=t.water_ok??t.tank_ok; $('tankValue').textContent=water===true||water===1?'Đủ nước':water===false||water===0?'Cảnh báo hết nước':'Chưa rõ';
+    $('tankStatus').innerHTML=`<span class="status-pill ${(water===true||water===1)?'good':'bad'}"><i class="dot"></i>${(water===true||water===1)?'Phao an toàn':'Kiểm tra bình nước'}</span>`;
+    const online=!!device.connected&&!!device.last_seen_at&&(Date.now()-new Date(device.last_seen_at).getTime()<120000);
+    setPill($('onlinePill'),online?'Online':'Offline',online?'good':'bad');$('modeNow').textContent=control.mode+(control.modeFromAck?' · ESP32 đã xác nhận':'');
+    if(modeSelectionDevice!==device.device_id){modeSelectionDevice=device.device_id;modeSelectionEdited=false;}
+    if(!modeSelectionEdited && document.activeElement!==$('modeSelect')) $('modeSelect').value=control.mode;
+    $('updatedAt').textContent=`Nhận lúc ${time(t.received_at)}`;
+    $('demoTag').textContent=device.is_demo?'Dữ liệu demo':'Thiết bị';$('demoTag').className=`status-pill ${device.is_demo?'':'good'}`;$('historyComplete').checked=!!device.watering_history_complete;
+    const commandBusy=commandState(d);
+    const lock=[];if(refreshFailed)lock.push('Mất kết nối backend; chờ cập nhật trạng thái');if(commandBusy)lock.push('Đang chờ xác nhận lệnh trước');if(control.mode!=='MANUAL')lock.push('Chờ chế độ hiện tại chuyển sang MANUAL');if(control.mode==='MANUAL' && !control.modeFromAck && control.remaining>0){const seconds=Math.ceil(control.remaining/1000);lock.push(`Đang nghỉ: còn ${Math.floor(seconds/60)} phút ${seconds%60} giây (sau khởi động hoặc lần bơm gần nhất)`);}else if(control.mode==='MANUAL' && !control.modeFromAck && control.unknownCooldown)lock.push('ESP32 báo đang nghỉ; cần firmware mới để hiển thị thời gian còn lại');if(!online)lock.push('Thiết bị đang offline');
+    const receivedAge=Date.now()-new Date(t.received_at).getTime(), measuredAge=Date.now()-new Date(t.measured_at).getTime();
+    if(!Number.isFinite(receivedAge)||receivedAge>90000||!Number.isFinite(measuredAge)||measuredAge>90000||measuredAge< -5000)lock.push('Dữ liệu đã cũ hoặc chưa có thời gian đo hợp lệ');
+    if(!(t.clock_ready===true||t.clock_ready===1)||t.clock_fault)lock.push('Đồng hồ chưa sẵn sàng');
+    if(!(t.commissioned===true||t.commissioned===1)||t.storage_fault)lock.push('Thiết bị chưa sẵn sàng hoặc có lỗi');
+    if(t.pump_running)lock.push('Bơm đang chạy');
+    if(control.modeFromAck && t.mode!==control.mode)lock.push('Đã nhận ACK; đang chờ trạng thái cảm biến mới');
+    const limits=control.payload, requestedMs=Number($('waterSeconds').value)*1000;
+    if(Number.isFinite(limits.max_pulse_ms))$('waterSeconds').max=limits.max_pulse_ms/1000;
+    if(!Number.isFinite(requestedMs)||requestedMs<=0)lock.push('Nhập thời lượng tưới hợp lệ');
+    if(requestedMs>limits.max_pulse_ms)lock.push(`Mỗi lần tối đa ${limits.max_pulse_ms/1000} giây`);
+    if((limits.quota_limit_starts>0 && limits.quota_starts>=limits.quota_limit_starts) || requestedMs+limits.quota_reserved_ms>limits.quota_limit_ms)lock.push('Đã đạt hạn mức ESP32; xem hạn mức bên dưới');
+    if(limits.quota_limit_starts===undefined&&control.lastWater?.ack_result==='quota')lock.push('ESP32 báo hết hạn mức; cần firmware mới để xem giới hạn thực');if(!(water===true||water===1))lock.push('Phao không xác nhận đủ nước');if(!(t.soil_valid===true||t.soil_valid===1))lock.push('Cảm biến đất lỗi hoặc chưa có dữ liệu');
+    $('waterBtn').disabled=lock.length>0;$('waterLock').textContent=lock.length?`Đã khoá tưới: ${lock.join(' · ')}.`:auth?'Sẵn sàng gửi yêu cầu. Bấm một lần và chờ ESP32 xác nhận.':'Cần đăng nhập quản trị để gửi lệnh tưới.';
+    const boolLabel=(value,yes,no)=>value===true||value===1?yes:value===false||value===0?no:'Chưa xác định';const hw=[['Phiên khởi động (boot_id)',t.boot_id],['Số thứ tự mẫu (sample_seq)',t.sample_seq],['Lệnh gần nhất (last_command_seq)',t.last_command_seq],['Sự kiện chờ gửi (queued_events)',t.queued_events],['Lỗi lưu trữ (storage_fault)',boolLabel(t.storage_fault,'Cảnh báo lỗi (true)','An toàn (false)')],['Đồng hồ hệ thống (clock_ready)',boolLabel(t.clock_ready,'Đã đồng bộ (true)','Chưa sẵn sàng (false)')],['Lỗi đồng hồ (clock_fault)',boolLabel(t.clock_fault,'Lỗi RTC (true)','Không có lỗi (false)')],['Mã hiệu chuẩn (calibration_id)',device.calibration_id||t.calibration_id]];
+    $('hardwareGrid').innerHTML=hw.map(([a,b])=>`<div class="hardware-item"><span>${a}</span><strong>${escapeHtml(b)}</strong></div>`).join('');
+    $('exportCsv').href=`/api/v1/web/devices/${encodeURIComponent(device.device_id)}/export-csv`;
+    const stats=d.watering_stats||{};$('statDaily').textContent=Number.isFinite(limits.quota_limit_starts)?(limits.quota_limit_starts===0?`${fmt(limits.quota_starts)} lần · Không giới hạn số lần`:`${fmt(limits.quota_starts)} / ${fmt(limits.quota_limit_starts)} lần`):'Chưa có hạn mức ESP32';$('statDailyNote').textContent=Number.isFinite(limits.quota_limit_ms)?`${limits.quota_scope?`Ngân sách ${limits.quota_scope} · `:''}Đã dành ${fmt(limits.quota_reserved_ms/1000)} / ${fmt(limits.quota_limit_ms/1000)} giây · Đặt lại: ${limits.quota_window_ends_at?time(limits.quota_window_ends_at*1000):'chưa bắt đầu cửa sổ'}`:'Nạp firmware hỗ trợ báo hạn mức thực';$('statCount').textContent=`${fmt(stats.total_events)} lần`;$('statCountNote').textContent=`Thủ công: ${fmt(stats.manual_count)} · Tự động: ${fmt(stats.auto_count)}`;$('statDuration').textContent=`${Number(stats.total_actual_seconds||0).toLocaleString('vi-VN',{minimumFractionDigits:1,maximumFractionDigits:1})} giây`;$('statDurationMs').textContent=`${fmt(stats.total_actual_ms)} ms`;$('statWater').textContent=stats.flow_is_configured?`~${fmt(stats.estimated_water_ml)} ml`:'Chưa hiệu chuẩn';$('statFlowNote').textContent=stats.flow_is_configured?(stats.flow_note||'Ước tính theo lưu lượng cấu hình'):'Cần đo lượng nước thực tế; chưa quy đổi sang ml';
+    const metrics=d.model_evaluation?.test_mae||{};$('modelMeta').textContent=d.model_evaluation?`Mô hình: ${metricNames[d.model_evaluation.selected_model]||d.model_evaluation.selected_model}${d.model_evaluation.selected_model==='linear_regression'?' (Hồi quy tuyến tính)':''} · Dự báo trước ${d.model_evaluation.horizon_minutes} phút · Nguồn dữ liệu: ${d.model_evaluation.data_origin}`:'Chưa có thông tin mô hình';$('academicLabel').textContent=`Nguồn: ${d.model_evaluation?.data_origin==='synthetic'?'Dữ liệu giả lập (synthetic)':d.model_evaluation?.data_origin||'chưa rõ'} · Khóa tự động bật bơm (can_trigger_pump=false)`;
+    $('maeBody').innerHTML=Object.entries(metricNames).map(([key,label])=>`<tr><td>${label}${key===d.model_evaluation?.selected_model?' · Được chọn':''}</td><td>${escapeHtml(fmt(metrics[key]))}</td></tr>`).join('');
+    const ai=d.latest_ai?.raw_output||d.latest_ai;showPrediction(ai);
+    const sourceName=value=>({MANUAL:'Thủ công',RULE:'Tự động',AI:'AI đề xuất',SCHEDULED:'Theo lịch'}[String(value||'').toUpperCase()]||value||'—');const reasonName=value=>({Reboot:'Gián đoạn do khởi động lại',Manual:'Tưới thủ công',ManualCheck:'Kiểm tra bơm',Scheduled:'Tưới theo lịch',Duration:'Tưới theo thời lượng',Threshold:'Tưới theo ngưỡng',Tank:'Dừng do phao báo thiếu nước',Stop:'Dừng theo lệnh'}[value]||value||'—');$('eventsBody').innerHTML=d.watering_events?.length?d.watering_events.map(e=>`<tr><td>${time(((Number(e.ended_at)||Number(e.started_at)||0))*1000)}</td><td>${escapeHtml(sourceName(e.source))}</td><td>${escapeHtml(reasonName(e.reason))}</td><td>${e.reason==='Reboot'&&e.actual_ms===null?'Gián đoạn do khởi động lại':e.actual_ms===null?'Chưa ghi nhận':`${(Number(e.actual_ms)/1000).toLocaleString('vi-VN',{minimumFractionDigits:1,maximumFractionDigits:1})} giây (${fmt(e.actual_ms)} ms)`}</td></tr>`).join(''):'<tr><td colspan="4" class="empty">Chưa có sự kiện</td></tr>';
+    $('commandsBody').innerHTML=d.commands?.length?d.commands.map(c=>`<tr><td>${escapeHtml(c.command_seq)}</td><td>${escapeHtml(c.kind)}${c.mode?` · ${escapeHtml(c.mode)}`:''}${c.duration_ms?` · ${escapeHtml(c.duration_ms)} ms`:''}</td><td>${escapeHtml(c.status)}</td><td>${escapeHtml(c.ack_result||'—')}</td><td>${time(Number(c.expires_at)*1000)}</td></tr>`).join(''):'<tr><td colspan="5" class="empty">Chưa có lệnh</td></tr>';
+    renderChart(d.history||[],ai);
+  }
+  function showPrediction(ai){if(!ai){$('aiState').textContent='Chưa chạy';$('predictionValue').textContent='—';$('predictionReason').textContent='Chưa có dự đoán được lưu.';return;}setPill($('aiState'),ai.status==='available'?'Có kết quả':'Không khả dụng',ai.status==='available'?'good':'bad');$('predictionValue').textContent=ai.status==='available'?`${fmt(ai.predicted_soil_pct)}%`:'—';$('predictionReason').textContent=ai.status==='available'?`Mô hình: Linear Regression (Hồi quy tuyến tính) · Dự báo trước ${ai.horizon_minutes} phút · Dữ liệu sẵn sàng lúc ${time(ai.available_at)} · Điều kiện: Không tưới thêm.`:`Lý do: ${ai.reason||'Không đủ điều kiện dữ liệu.'}`;}
+  async function loadDevices(){const list=await api('/api/v1/web/devices');const select=$('deviceSelect');const old=selected;select.innerHTML=list.map(d=>{const label=d.device_id==='fittonia-bench'?'Cây Cẩm nhung (Fittonia) · Kịch bản Bench':d.device_id==='SIM-ONLY'?'Mô phỏng AI v2 (SIM-ONLY · 14.400 mẫu)':d.display_name||d.device_id;return `<option value="${escapeHtml(d.device_id)}">${escapeHtml(label)}</option>`;}).join('');if(!list.length){notice('Chưa có thiết bị. Chạy backend/seed_demo.py để nạp dữ liệu trình diễn.','warn');return;}selected=list.some(d=>d.device_id===old)?old:list[0].device_id;select.value=selected;await refresh();}
+  async function refresh(){if(!selected||refreshing)return;refreshing=true;const deviceId=selected;try{const d=await api(`/api/v1/web/devices/${encodeURIComponent(deviceId)}/dashboard`);const saved=storedRequest(deviceId);if(saved?.body?.request_id && !(d.commands||[]).some(c=>c.request_id===saved.body.request_id)){try{const c=await api(`/api/v1/web/devices/${encodeURIComponent(deviceId)}/requests/${encodeURIComponent(saved.body.request_id)}`);d.commands=[...(d.commands||[]),c];}catch(e){if(e.status!==404)throw e;}}if(selected===deviceId){refreshFailed=false;if(refreshNotice && $('notice').textContent===refreshNotice)clearNotice();refreshNotice=null;render(d);}}catch(e){if(selected===deviceId){refreshFailed=true;refreshNotice=e.message;notice(e.message,'error');if(dashboard)render(dashboard);}}finally{refreshing=false;if(selected!==deviceId)refresh();}}
+  async function createCommand(body){
+    if(!auth){openLogin();return;}
+    if(body.kind!=='STOP' && dashboard?.device?.device_id!==selected)return;
+    if(body.kind==='WATER'&&$('waterBtn').disabled)return;
+    const deviceId=selected;
+    if(body.kind!=='STOP' && (storedRequest(deviceId)||sending.has(deviceId)||uncertainCommands.has(deviceId)||trackedCommands.has(deviceId)||(dashboard?.commands||[]).some(c=>c.status==='PENDING'&&!c.ack_result)))return;
+    const expected=Math.max(Number(dashboard?.device?.last_command_seq||0),Number(dashboard?.latest?.last_command_seq||0),0,...(dashboard?.commands||[]).map(c=>c.command_seq));
+    let request;
+    try {request={body:{...body,request_id:requestId(),expected_seq:expected}};localStorage.setItem(requestKey(deviceId),JSON.stringify(request));}
+    catch {notice('Không lưu được mã yêu cầu; chưa gửi lệnh. Kiểm tra quyền lưu trữ trình duyệt.','error');return;}
+    sending.set(deviceId,request);
+    commandMessages.set(deviceId,'Đang gửi lệnh…');
+    if(dashboard)render(dashboard);
+    try{
+      const r=await api(`/api/v1/web/devices/${encodeURIComponent(deviceId)}/commands`,{method:'POST',body:JSON.stringify(request.body)});
+      if(!Number.isSafeInteger(r?.command_seq)||r.command_seq<=0)throw new Error('Phản hồi thiếu mã lệnh hợp lệ');
+      if(sending.get(deviceId)!==request || storedRequest(deviceId)?.body?.request_id!==request.body.request_id)return;
+      uncertainCommands.delete(deviceId);
+      trackedCommands.set(deviceId,r.command_seq);
+      commandMessages.set(deviceId,`Đã gửi lệnh #${r.command_seq}; đang chờ ESP32 xác nhận. Không cần bấm lại.`);
+    }catch(e){
+      if(sending.get(deviceId)===request){
+        if(!e.rejected)uncertainCommands.set(deviceId,request);
+        else {clearRequest(deviceId,request.body.request_id);uncertainCommands.delete(deviceId);}
+        commandMessages.set(deviceId,`Chưa xác nhận gửi lệnh: ${e.message}. ${e.rejected?'Yêu cầu bị từ chối.':'Chưa rõ server đã nhận lệnh hay chưa; không gửi lại. Bấm STOP và chờ xác nhận OFF trước khi tiếp tục.'}`);
+      }
+    }
+    finally{if(sending.get(deviceId)===request)sending.delete(deviceId);if(selected===deviceId&&dashboard)render(dashboard);await refresh();}
+  }
+  $('modeBtn').onclick=()=>createCommand({kind:'SET_MODE',mode:$('modeSelect').value,ttl_sec:30});
+  $('waterSeconds').oninput=()=>{if(dashboard)render(dashboard);};
+  $('waterBtn').onclick=()=>{const seconds=Number($('waterSeconds').value);if(!Number.isFinite(seconds)||seconds<=0){notice('Nhập thời gian tưới hợp lệ.','error');return;}createCommand({kind:'WATER',duration_ms:Math.round(seconds*1000),ttl_sec:30});};
+  $('stopBtn').onclick=()=>createCommand({kind:'STOP',ttl_sec:30});
+  $('predictBtn').onclick=async()=>{if(!auth){openLogin();return;}try{const result=await api(`/api/v1/web/devices/${encodeURIComponent(selected)}/predict`,{method:'POST',body:JSON.stringify({watering_history_complete:$('historyComplete').checked})});showPrediction(result);notice(result.status==='available'?'Đã lưu kết quả dự đoán AI.':'AI từ chối dự đoán an toàn: '+result.reason,result.status==='available'?'ok':'warn');await refresh();}catch(e){notice(e.message,'error');}};
+  $('clock').textContent=new Date().toLocaleDateString('vi-VN',{weekday:'short',day:'2-digit',month:'long',year:'numeric'});
+  $('loginBtn').textContent=auth?'Đăng xuất quản trị':'Đăng nhập quản trị';
+    loadDevices().catch(e=>notice(e.message,'error'));setInterval(()=>{if(selected)refresh();},2000);
+})();
+</script>
+</body>
+</html>

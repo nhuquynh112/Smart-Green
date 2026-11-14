@@ -1,0 +1,15 @@
+# Preserve exact W02 snapshot bytes so committed files match the evidence hashes.
+artifacts/session-w02-2026-11-12/** -text
+artifacts/session-w02-2026-11-12/prepared/*.csv whitespace=cr-at-eol
+
+# Preserve W03 evidence hashes and CSV line endings.
+artifacts/session-w03-2026-11-13/** -text
+artifacts/session-w03-2026-11-13/**/*.csv whitespace=cr-at-eol
+
+# Preserve W04 source snapshots, predictions and backup checksums exactly.
+artifacts/session-w04-2026-11-14/** -text
+artifacts/session-w04-2026-11-14/**/*.csv whitespace=cr-at-eol
+artifacts/session-w04-2026-11-14/*.csv whitespace=cr-at-eol
+artifacts/w04-20261114-reviewed.zip -text
+# Original handoff uses Markdown two-space hard breaks; preserve source bytes.
+artifacts/session-w04-2026-11-14/handoff.md whitespace=-blank-at-eol

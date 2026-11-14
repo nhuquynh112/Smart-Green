@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "device_id": "garden-01",
+  "calibration_id": "soil-2511-979",
+  "data_origin": "real",
+  "coverage_start": "2026-11-13T10:00:00+07:00",
+  "coverage_end": "2026-11-13T18:00:00+07:00",
+  "history_complete": true,
+  "last_watered_at_before_start": "2026-11-11T12:14:00+07:00",
+  "events": [],
+  "unknown_intervals": [],
+  "notes": [
+    "User confirmed W03 10:00–18:00 Nov13, no changes or watering. Prior confirmed watering W01 Nov11 12:13–12:14, approximately four teaspoons, volume not measured.",
+    "Raw snapshot includes later observations up to 18:54:44; evaluation input is explicitly filtered to received_at before 18:00. W03 continues same watering cycle as W01/W02."
+  ]
+}

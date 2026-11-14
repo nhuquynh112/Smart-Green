@@ -1,0 +1,43 @@
+{
+  "snapshot_rows": 1066,
+  "session_rows": 956,
+  "outside_session_rows": 110,
+  "first_received": "2026-11-13T03:02:14.436995+00:00",
+  "last_received": "2026-11-13T10:59:43.817583+00:00",
+  "first_measured": "2026-11-13T03:02:40+00:00",
+  "last_measured": "2026-11-13T10:59:41+00:00",
+  "missing_timestamp": 1,
+  "cadence_seconds": {
+    "min": 29.0,
+    "median": 30.0,
+    "max": 31.0
+  },
+  "flags": {
+    "boot_id": {
+      "53544426adb17d84": 956
+    },
+    "soil_valid": {
+      "True": 956
+    },
+    "air_valid": {
+      "True": 956
+    },
+    "clock_ready": {
+      "False": 1,
+      "True": 955
+    },
+    "clock_fault": {
+      "False": 956
+    },
+    "mode": {
+      "OFF": 956
+    },
+    "pump_on": {
+      "False": 956
+    },
+    "tank_ok": {
+      "False": 449,
+      "True": 507
+    }
+  }
+}

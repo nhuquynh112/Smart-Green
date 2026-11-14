@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "smart-green-tv1"
+version = "0.1.0"
+description = "TV1 data and forecasting scaffold; no automatic model promotion"
+requires-python = ">=3.11"
+dependencies = ["numpy>=2,<3", "pandas>=2.2,<4", "scikit-learn>=1.5,<2", "joblib>=1.4,<2"]
+
+[project.optional-dependencies]
+capture = ["pyserial>=3.5,<4"]
+test = ["pytest>=8,<10"]
+report = ["matplotlib>=3.8,<4"]
+
+[project.scripts]
+smart-green-assess = "smart_green_ai.assess:main"
+smart-green-train = "smart_green_ai.train:main"
+smart-green-simulate = "smart_green_ai.simulate:main"
+
+[tool.setuptools.packages.find]
+where = ["ai"]
+
+[tool.pytest.ini_options]
+testpaths = ["ai/tests", "backend/tests", "tools/tests"]
+pythonpath = ["ai"]

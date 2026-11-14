@@ -1,0 +1,1 @@
+{"Servers":{"1":{"Name":"Smart Green","Group":"Servers","Host":"postgres","Port":5432,"MaintenanceDB":"smart_green_local","Username":"ad","SSLMode":"prefer","PassFile":"/var/lib/pgadmin/.pgpass"}}}

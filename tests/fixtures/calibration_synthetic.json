@@ -1,0 +1,8 @@
+{
+  "data_origin": "synthetic", "device_id": "SIM-ONLY", "calibration_id": "SIM-demo-v1",
+  "measured_at": "2026-11-06T12:00:00+07:00", "plant": "SIMULATED", "soil_description": "SIMULATED; NOT REAL MEASUREMENTS", "depth_cm": 5,
+  "dry_raw_samples": [2790, 2800, 2810, 2800, 2805], "wet_raw_samples": [1490, 1500, 1510, 1500, 1505],
+  "pump": {"voltage_v": 5, "tube_description": "SIMULATED", "lift_cm": 20,
+    "trials": [{"duration_s": 1, "volume_ml": 9}, {"duration_s": 1, "volume_ml": 10}, {"duration_s": 1, "volume_ml": 11}], "target_ml": 10},
+  "checks": {"relay_off_at_boot": false, "relay_off_at_reset": false, "empty_tank_stops_pump": false, "no_siphon_after_stop": false}
+}

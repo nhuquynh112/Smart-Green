@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "device_id": "garden-01",
+  "calibration_id": "soil-2511-979",
+  "data_origin": "real",
+  "coverage_start": "2026-11-14T10:15:00+07:00",
+  "coverage_end": "2026-11-14T21:12:00+07:00",
+  "history_complete": true,
+  "last_watered_at_before_start": null,
+  "events": [
+    {
+      "event_id": "W04-hand-1",
+      "started_at": "2026-11-14T11:59:00+07:00",
+      "ended_at": "2026-11-14T12:02:00+07:00",
+      "method": "hand",
+      "volume_ml": null,
+      "estimated_volume_ml": 10,
+      "teaspoons": 2,
+      "volume_basis": "assumed 5 ml/spoon, not independently measured",
+      "time_basis": "start approximate; end reported to minute"
+    },
+    {
+      "event_id": "W04-hand-2",
+      "started_at": "2026-11-14T12:19:00+07:00",
+      "ended_at": "2026-11-14T12:22:00+07:00",
+      "method": "hand",
+      "volume_ml": null,
+      "estimated_volume_ml": 15,
+      "teaspoons": 3,
+      "volume_basis": "assumed 5 ml/spoon, not independently measured",
+      "time_basis": "nominal from handoff; second event inferred"
+    }
+  ],
+  "unknown_intervals": [],
+  "notes": [
+    "Within-session history supplied in handoff. Prior watering before coverage not yet confirmed: pre-first-water minutes excluded.",
+    "Volumes estimated using 5 ml per teaspoon; volume_ml is null because no independent measurement.",
+    "Second event nominal time inferred, not precisely confirmed. Sensitivity variants shift second event +/-1 minute; not confidence bounds."
+  ]
+}
