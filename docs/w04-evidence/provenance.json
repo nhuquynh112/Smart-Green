@@ -1,0 +1,11 @@
+{
+  "git_head": "71ac48169c264fe095ec59eda25cf0aedc4e0c73",
+  "processing_source_sha256": {
+    "tools/prepare_telemetry.py": "bbd4b2801307410ac35174b4cd9805ea68f5c7ae709f47bcd207ec4e33e02721",
+    "tools/watering_journal.py": "b98e4b23db425eaaf855146861975d660e3eb1689fef31a989309f50a8b34ac6",
+    "tools/build_ai_dataset.py": "4836d0a900cc6787a335e4773a3d7c83736bb50aec8c63b790007cbed4756d2e",
+    "ai/smart_green_ai/features.py": "3515a985cd69c2099b5b048cbf374a8ef6983707da0ede508395c3e7cc453fc6",
+    "ai/smart_green_ai/train.py": "528edb6c3504f9052c200461ad9bf6586637abb8dabb07a0b52857f40cd62eaa"
+  },
+  "note": "Existing backend/UI changes not deployed or included in W04 processing. No fitting. Prior-water scenario labelled assumption."
+}

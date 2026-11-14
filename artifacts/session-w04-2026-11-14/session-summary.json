@@ -1,0 +1,77 @@
+{
+  "rows": 1313,
+  "duplicate_identity_rows": 0,
+  "boots": [
+    "7b3c326f12b7f8a5"
+  ],
+  "first_received": "2026-11-14T03:15:44.998300+00:00",
+  "last_received": "2026-11-14T14:11:45.785317+00:00",
+  "untimed_rows": 1,
+  "measurement_interval_seconds": {
+    "min": 29.0,
+    "median": 30.0,
+    "max": 31.0
+  },
+  "gaps_over_45s": [],
+  "fields": {
+    "mode": {
+      "OFF": 1313
+    },
+    "pump_on": {
+      "False": 1313
+    },
+    "tank_ok": {
+      "True": 1311,
+      "False": 2
+    },
+    "soil_valid": {
+      "True": 1313
+    },
+    "air_valid": {
+      "True": 1313
+    },
+    "clock_ready": {
+      "True": 1312,
+      "False": 1
+    },
+    "clock_fault": {
+      "False": 1313
+    },
+    "storage_fault": {
+      "False": 1313
+    },
+    "calibration_id": {
+      "soil-2511-979": 1313
+    },
+    "data_origin": {
+      "real": 1313
+    }
+  },
+  "numeric": {
+    "soil_pct": {
+      "missing": 0,
+      "min": 0.0,
+      "max": 23.04177
+    },
+    "temperature_c": {
+      "missing": 0,
+      "min": 31.2,
+      "max": 33.2
+    },
+    "humidity_pct": {
+      "missing": 0,
+      "min": 61.7,
+      "max": 75.2
+    },
+    "light_raw": {
+      "missing": 0,
+      "min": 756.0,
+      "max": 4095.0
+    },
+    "light_lux": {
+      "missing": 1313,
+      "min": null,
+      "max": null
+    }
+  }
+}

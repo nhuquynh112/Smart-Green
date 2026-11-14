@@ -1,0 +1,73 @@
+{
+  "expanded_events": {
+    "quality": {
+      "input_rows": 1313,
+      "rows_without_selected_time": 1,
+      "output_minutes": 656,
+      "excluded_minutes": 111,
+      "exclusions": {
+        "unknown_previous_watering": 106,
+        "watering_minute": 8
+      },
+      "time_basis": "device_timestamp",
+      "as_of": "2026-11-14T21:12:00+07:00",
+      "time_proxy": false,
+      "data_origin": "real",
+      "feature_version": "v2-watering-events",
+      "automatic_irrigation_approved": false,
+      "note": "Closed-minute aggregates. Proxy timestamps remain labelled; no pump duration inferred from hand watering."
+    },
+    "evaluation": {
+      "30": {
+        "rows": 484,
+        "mae_pp": {
+          "persistence": 0.5715533925619833,
+          "linear_extrapolation": 0.9445872685950414
+        }
+      },
+      "60": {
+        "rows": 454,
+        "mae_pp": {
+          "persistence": 1.0021882511013216,
+          "linear_extrapolation": 1.7764204823788545,
+          "random_forest": 6.621135772067159
+        }
+      }
+    }
+  },
+  "prior_W01_assumption": {
+    "quality": {
+      "input_rows": 1313,
+      "rows_without_selected_time": 1,
+      "output_minutes": 656,
+      "excluded_minutes": 4,
+      "exclusions": {
+        "watering_minute": 4
+      },
+      "time_basis": "device_timestamp",
+      "as_of": "2026-11-14T21:12:00+07:00",
+      "time_proxy": false,
+      "data_origin": "real",
+      "feature_version": "v2-watering-events",
+      "automatic_irrigation_approved": false,
+      "note": "Closed-minute aggregates. Proxy timestamps remain labelled; no pump duration inferred from hand watering."
+    },
+    "evaluation": {
+      "30": {
+        "rows": 544,
+        "mae_pp": {
+          "persistence": 0.5790681020220587,
+          "linear_extrapolation": 0.9558344917279411
+        }
+      },
+      "60": {
+        "rows": 484,
+        "mae_pp": {
+          "persistence": 1.0023763006198347,
+          "linear_extrapolation": 1.7673248636363637,
+          "random_forest": 6.316569901797439
+        }
+      }
+    }
+  }
+}

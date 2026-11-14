@@ -1,0 +1,8 @@
+{
+  "start_inclusive": "2026-11-14T10:15:00+07:00",
+  "end_inclusive": "2026-11-14T21:12:00+07:00",
+  "rows": 1313,
+  "pump_events": 0,
+  "journal_status": "handoff_nominal_times_with_uncertainty",
+  "note": "Bounds from W04 handoff; watering event 2 time approximate."
+}
