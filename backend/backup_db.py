@@ -18,6 +18,8 @@ TABLES = {
     "commands": "device_id,command_seq",
     "watering_events": "device_id,event_id",
     "ai_predictions": "prediction_id",
+    "collection_sessions": "session_id",
+    "collection_session_revisions": "session_id,revision",
 }
 
 

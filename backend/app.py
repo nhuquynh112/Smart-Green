@@ -96,6 +96,9 @@ def _validate_telemetry(body: dict, path_device: str) -> tuple[str, int, datetim
     for name in ("soil_valid", "air_valid", "tank_ok", "pump_on"):
         if type(body.get(name)) is not bool:
             raise HTTPException(422, detail=f"{name} must be boolean")
+    for name in ("commissioned", "storage_fault", "clock_ready", "clock_fault", "server_available"):
+        if name in body and type(body[name]) is not bool:
+            raise HTTPException(422, detail=f"{name} must be boolean")
     if body["soil_valid"] != (body.get("soil_pct") is not None):
         raise HTTPException(422, detail="soil validity mismatch")
     if body["air_valid"] != (body.get("temperature_c") is not None and body.get("humidity_pct") is not None):
@@ -210,14 +213,14 @@ def create_app(db: Database | None = None, bundle: dict | None = None,
     app.state.ai_predictor = ai_predictor
     app.mount("/static", StaticFiles(directory=ROOT / "backend" / "static"), name="static")
 
-    def make_prediction(device_id: str, history_complete: bool | None = None) -> dict:
+    def make_prediction(device_id: str, history_complete: bool | None = None, review: dict | None = None) -> dict:
         bundle = app.state.ai_bundle
-        latest_row = database.one("SELECT data_origin,calibration_id FROM telemetry WHERE device_id=? ORDER BY received_at DESC LIMIT 1", (device_id,))
+        latest_row = database.one("SELECT data_origin,calibration_id,boot_id FROM telemetry WHERE device_id=? ORDER BY received_at DESC LIMIT 1", (device_id,))
         latest_origin = latest_row.get("data_origin") if latest_row else None
         if bundle is None:
             result = {"status": "unavailable", "reason": "AI model is not configured", "can_trigger_pump": False}
         else:
-            if history_complete is not None:
+            if history_complete is not None and latest_origin == "synthetic":
                 if database.sqlite:
                     database.execute("UPDATE devices SET watering_history_complete=? WHERE device_id=?",
                                      (history_complete, device_id))
@@ -225,7 +228,9 @@ def create_app(db: Database | None = None, bundle: dict | None = None,
                     database.execute("UPDATE devices SET watering_history_complete=? WHERE device_id=?",
                                      (history_complete, device_id))
             device = database.one("SELECT watering_history_complete FROM devices WHERE device_id=?", (device_id,))
-            if not device or not device["watering_history_complete"]:
+            if latest_origin == "real" and (history_complete is not True or not review):
+                result = {"status": "unavailable", "reason": "Cần đối soát nhật ký cho lần dự báo này, kèm thời điểm và phiên khởi động.", "can_trigger_pump": False}
+            elif not device or (latest_origin != "real" and not device["watering_history_complete"]):
                 result = {"status": "unavailable", "reason": "watering history is not confirmed complete", "can_trigger_pump": False}
             else:
                 quality = bundle.get("metadata", {}).get("quality", {})
@@ -244,6 +249,17 @@ def create_app(db: Database | None = None, bundle: dict | None = None,
                     events = database.all("SELECT * FROM watering_events WHERE device_id=? AND reason IN ('Manual','Scheduled') ORDER BY started_at", (device_id,))
                 else:
                     events = database.all("SELECT * FROM watering_events WHERE device_id=? ORDER BY started_at", (device_id,))
+                if latest_origin == "real":
+                    try:
+                        reviewed_until = _parse_time(review.get('reviewed_until'), 'reviewed_until')
+                        age = (datetime.now(timezone.utc)-reviewed_until).total_seconds() if reviewed_until else float('inf')
+                        if not 0 <= age <= 120 or review.get('reviewed_boot_id') != latest_row.get('boot_id'):
+                            raise ValueError('Nhật ký đã cũ hoặc thiết bị đã khởi động lại; đối soát và thử lại')
+                        # Never apply approval to samples beyond the user-reviewed watermark.
+                        rows = [r for r in rows if r.get('boot_id') == review['reviewed_boot_id'] and
+                                _parse_time(r['measured_at'], 'measured_at') <= reviewed_until]
+                    except (ValueError, TypeError, HTTPException):
+                        rows = []
                 recent = make_recent_minute_dataframe(device_id, rows, events)
                 if recent.empty:
                     result = {"status": "unavailable", "reason": "no valid measured telemetry history", "can_trigger_pump": False}
@@ -612,8 +628,10 @@ def create_app(db: Database | None = None, bundle: dict | None = None,
         history_complete = (body or {}).get("watering_history_complete")
         if history_complete is not None and type(history_complete) is not bool:
             raise HTTPException(400, detail="watering_history_complete phải là boolean")
-        return make_prediction(device_id, history_complete)
+        return make_prediction(device_id, history_complete, body)
 
+    from backend.collection_sessions import install_session_routes
+    install_session_routes(app, database, _admin_auth)
     return app
 
 

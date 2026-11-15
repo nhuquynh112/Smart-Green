@@ -1,0 +1,201 @@
+{
+  "horizon_minutes": 30,
+  "feature_version": "experimental-v3-light-adc",
+  "counts": {
+    "W01": {
+      "input_rows": 530,
+      "grid_minutes": 530,
+      "usable_windows": 483,
+      "missing_minutes": 0,
+      "watering_counter_increments": 0,
+      "device_id": "garden-01",
+      "calibration_id": "soil-2511-979",
+      "data_origin": "real",
+      "time_basis": "device_timestamp",
+      "scope": "Only complete dry history and futures with no additional watering",
+      "v2_windows": 483,
+      "common_windows": 483,
+      "excluded_for_light": 0,
+      "exclude_saturated": false
+    },
+    "W02": {
+      "input_rows": 479,
+      "grid_minutes": 479,
+      "usable_windows": 385,
+      "missing_minutes": 0,
+      "watering_counter_increments": 0,
+      "device_id": "garden-01",
+      "calibration_id": "soil-2511-979",
+      "data_origin": "real",
+      "time_basis": "device_timestamp",
+      "scope": "Only complete dry history and futures with no additional watering",
+      "v2_windows": 385,
+      "common_windows": 385,
+      "excluded_for_light": 0,
+      "exclude_saturated": false
+    },
+    "W03": {
+      "input_rows": 478,
+      "grid_minutes": 478,
+      "usable_windows": 433,
+      "missing_minutes": 0,
+      "watering_counter_increments": 0,
+      "device_id": "garden-01",
+      "calibration_id": "soil-2511-979",
+      "data_origin": "real",
+      "time_basis": "device_timestamp",
+      "scope": "Only complete dry history and futures with no additional watering",
+      "v2_windows": 433,
+      "common_windows": 433,
+      "excluded_for_light": 0,
+      "exclude_saturated": false
+    },
+    "W04": {
+      "input_rows": 656,
+      "grid_minutes": 656,
+      "usable_windows": 485,
+      "missing_minutes": 0,
+      "watering_counter_increments": 1,
+      "device_id": "garden-01",
+      "calibration_id": "soil-2511-979",
+      "data_origin": "real",
+      "time_basis": "device_timestamp",
+      "scope": "Only complete dry history and futures with no additional watering",
+      "v2_windows": 485,
+      "common_windows": 485,
+      "excluded_for_light": 0,
+      "exclude_saturated": false
+    }
+  },
+  "fit_session": "W01",
+  "validation_sessions": [
+    "W02",
+    "W03"
+  ],
+  "test_session": "W04",
+  "selected_on_validation": "persistence",
+  "validation_mae_pp": {
+    "linear_regression_control": 5.024832969437652,
+    "random_forest_control": 1.330475047793884,
+    "linear_regression_light": 5.024832969437652,
+    "random_forest_light": 1.3114886322963808,
+    "persistence": 0.31603701711491444,
+    "linear_extrapolation": 0.6337896919315403
+  },
+  "test_mae_pp": {
+    "linear_regression_control": 6.802907481248518,
+    "random_forest_control": 6.6132199676310774,
+    "linear_regression_light": 6.920196872273024,
+    "random_forest_light": 6.611409973281695,
+    "persistence": 0.5729320659793814,
+    "linear_extrapolation": 0.964577150515464
+  },
+  "saturation_sensitivity": {
+    "policy": "same fitted models, test subset with no saturated ADC in 16-minute history; diagnostic, not model selection",
+    "rows": 394,
+    "mae_pp": {
+      "linear_regression_control": 6.979129629999993,
+      "random_forest_control": 6.7259957926277325,
+      "linear_regression_light": 7.1000391063630355,
+      "random_forest_light": 6.724191387892322,
+      "persistence": 0.6467773426395939,
+      "linear_extrapolation": 1.0329554390862945
+    }
+  },
+  "ranges": {
+    "soil_pct": {
+      "fit_min": 3.263708,
+      "fit_max": 5.1892949999999995,
+      "test_outside_fit_rows": 485
+    },
+    "soil_lag_5": {
+      "fit_min": 3.263708,
+      "fit_max": 5.1892949999999995,
+      "test_outside_fit_rows": 485
+    },
+    "soil_lag_15": {
+      "fit_min": 3.263708,
+      "fit_max": 17.362924,
+      "test_outside_fit_rows": 2
+    },
+    "slope_15": {
+      "fit_min": -0.8659703666666666,
+      "fit_max": 0.047867666666666656,
+      "test_outside_fit_rows": 21
+    },
+    "temperature_c": {
+      "fit_min": 31.0,
+      "fit_max": 32.7,
+      "test_outside_fit_rows": 175
+    },
+    "humidity_pct": {
+      "fit_min": 62.5,
+      "fit_max": 68.30000000000001,
+      "test_outside_fit_rows": 221
+    },
+    "minutes_since_water": {
+      "fit_min": 17.0,
+      "fit_max": 499.0,
+      "test_outside_fit_rows": 2
+    },
+    "hour_sin": {
+      "fit_min": -0.39073112848927355,
+      "fit_max": 1.0,
+      "test_outside_fit_rows": 9
+    },
+    "hour_cos": {
+      "fit_min": -1.0,
+      "fit_max": 0.1305261922200517,
+      "test_outside_fit_rows": 0
+    },
+    "light_raw": {
+      "fit_min": 2481.0,
+      "fit_max": 4095.0,
+      "test_outside_fit_rows": 0
+    },
+    "light_lag_5": {
+      "fit_min": 2481.0,
+      "fit_max": 4095.0,
+      "test_outside_fit_rows": 3
+    },
+    "light_lag_15": {
+      "fit_min": 2085.0,
+      "fit_max": 4095.0,
+      "test_outside_fit_rows": 0
+    },
+    "light_mean_15": {
+      "fit_min": 2796.8,
+      "fit_max": 4095.0,
+      "test_outside_fit_rows": 5
+    },
+    "light_slope_15": {
+      "fit_min": -107.6,
+      "fit_max": 85.73333333333333,
+      "test_outside_fit_rows": 0
+    }
+  },
+  "automatic_irrigation_approved": false,
+  "can_trigger_pump": false,
+  "split": {
+    "W01": {
+      "rows": 483,
+      "first_feature": "2026-11-11T05:30:00+00:00",
+      "last_label": "2026-11-11T14:02:00+00:00"
+    },
+    "W02": {
+      "rows": 385,
+      "first_feature": "2026-11-12T08:11:00+00:00",
+      "last_label": "2026-11-12T15:54:00+00:00"
+    },
+    "W03": {
+      "rows": 433,
+      "first_feature": "2026-11-13T03:17:00+00:00",
+      "last_label": "2026-11-13T10:59:00+00:00"
+    },
+    "W04": {
+      "rows": 485,
+      "first_feature": "2026-11-14T05:37:00+00:00",
+      "last_label": "2026-11-14T14:11:00+00:00"
+    }
+  }
+}

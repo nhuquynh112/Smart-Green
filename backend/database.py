@@ -47,6 +47,15 @@ CREATE TABLE IF NOT EXISTS ai_predictions(prediction_id INTEGER PRIMARY KEY AUTO
  model_name TEXT,data_origin TEXT,can_trigger_pump INTEGER NOT NULL DEFAULT 0 CHECK(can_trigger_pump=0),
  status TEXT NOT NULL,raw_output TEXT NOT NULL,created_at TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS ai_predictions_device_created_idx ON ai_predictions(device_id,created_at DESC);
+CREATE TABLE IF NOT EXISTS collection_sessions (
+ session_id TEXT PRIMARY KEY, device_id TEXT NOT NULL REFERENCES devices(device_id),
+ revision INTEGER NOT NULL, active INTEGER NOT NULL, document TEXT NOT NULL);
+CREATE UNIQUE INDEX IF NOT EXISTS collection_sessions_active_device ON collection_sessions(device_id) WHERE active=1;
+CREATE TABLE IF NOT EXISTS collection_session_revisions (
+ session_id TEXT NOT NULL REFERENCES collection_sessions(session_id), revision INTEGER NOT NULL,
+ document TEXT NOT NULL, reviewed_by TEXT NOT NULL, saved_at TEXT NOT NULL,
+ PRIMARY KEY(session_id,revision));
+
 """
 
 

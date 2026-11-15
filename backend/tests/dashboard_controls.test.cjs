@@ -2,14 +2,15 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-function setup(sharedStorage=new Map()){
+function setup(sharedStorage=new Map(),sessionHandler=null){
   const elements=new Map();
   const el=id=>{if(!elements.has(id))elements.set(id,{value:'',textContent:'',classList:{add(){},remove(){}}});return elements.get(id);};
-  let posts=0, finishPost, chart, getError=false, hangGet=false;
+  let posts=0, finishPost, chart, lightChart, getError=false, hangGet=false;
   const requests=[],timers=new Map();let timerId=0;
-  function Chart(element,config){Object.assign(this,config);this.update=()=>{};chart=this;}
+  function Chart(element,config){Object.assign(this,config);this.update=()=>{};if(element===el('historyChart'))chart=this;else lightChart=this;}
   const data={device:{device_id:'garden',connected:true,last_seen_at:new Date().toISOString()},latest:{mode:'OFF',water_ok:true,soil_valid:true,clock_ready:true,commissioned:true,received_at:new Date().toISOString(),measured_at:new Date().toISOString()},commands:[]};
   const context={Uint8Array,crypto:require('node:crypto').webcrypto,localStorage:{getItem:k=>sharedStorage.get(k)||null,setItem:(k,v)=>sharedStorage.set(k,v),removeItem:k=>sharedStorage.delete(k)},document:{getElementById:el,activeElement:null},window:{Chart},Chart,sessionStorage:{getItem:()=> 'test',setItem(){},removeItem(){}},Date,Number,Math,JSON,encodeURIComponent,AbortController,setTimeout(fn){timers.set(++timerId,fn);return timerId;},clearTimeout(id){timers.delete(id);},setInterval(){},fetch:async(url,options)=>{
+    if(url.includes('/sessions')&&sessionHandler)return sessionHandler(url,options);
     if(options.method==='POST'){posts++;const seq=posts;await new Promise((resolve,reject)=>{finishPost=resolve;requests.push({resolve,reject,body:JSON.parse(options.body)});options.signal.addEventListener('abort',()=>reject(new Error('aborted')));});return {ok:true,status:201,json:async()=>({command_seq:seq})};}
     if(hangGet)await new Promise((resolve,reject)=>options.signal.addEventListener('abort',()=>reject(new Error('aborted'))));
     if(getError)throw new Error('NetworkError');
@@ -22,7 +23,7 @@ function setup(sharedStorage=new Map()){
   source=source.replace('})();',"globalThis.apiTest={render,createCommand,refresh,select(id){selected=id;}};})();");
   el('waterSeconds').value='0.5';vm.runInNewContext(source,context);context.apiTest.select('garden');
   const render=context.apiTest.render;context.apiTest.render=d=>{for(const c of d.commands||[]){if(!c.request_id)c.request_id=requests[c.command_seq-1]?.body.request_id;}return render(d);};context.apiTest.render(data);
-  return {sharedStorage,requests,timers,hangGet(value){hangGet=value;},expire(){for(const fn of [...timers.values()])fn();},failGet(value){getError=value;},chart:()=>chart,api:context.apiTest,el,data,posts:()=>posts,finish:()=>finishPost()};
+  return {sharedStorage,requests,timers,hangGet(value){hangGet=value;},expire(){for(const fn of [...timers.values()])fn();},failGet(value){getError=value;},chart:()=>chart,lightChart:()=>lightChart,api:context.apiTest,el,data,posts:()=>posts,finish:()=>finishPost()};
 }
 test('polling preserves an edited mode and OFF blocks WATER',()=>{
  const s=setup();s.el('modeSelect').value='MANUAL';s.el('modeSelect').onchange();s.api.render(s.data);
@@ -175,4 +176,51 @@ test('a STOP resolved in another tab clears the original tab uncertainty',async(
  s.sharedStorage.clear();s.data.latest.mode='OFF';s.data.commands=[];
  await s.api.refresh();s.el('modeSelect').value='MANUAL';s.el('modeSelect').onchange();
  assert.equal(s.el('modeBtn').disabled,false);
+});
+test('mode-specific UI and actual AI model metadata',()=>{
+ const s=setup();s.data.latest.mode='OFF';s.api.render(s.data);
+ assert.equal(s.el('manualControls').hidden,true);assert.match(s.el('modeGuidance').textContent,/Đã tắt/);
+ s.data.latest.mode='MANUAL';s.api.render(s.data);assert.equal(s.el('manualControls').hidden,false);
+ s.data.latest.mode='AUTO';s.data.latest.payload={quota_limit_ms:20000,quota_reserved_ms:1000};
+ s.data.latest_ai={status:'available',model:'random_forest',predicted_soil_pct:30,horizon_minutes:60};s.api.render(s.data);
+ assert.equal(s.el('manualControls').hidden,true);assert.match(s.el('predictionReason').textContent,/Random Forest/);
+ assert.doesNotMatch(s.el('predictionReason').textContent,/Linear Regression/);
+ assert.match(s.el('modeGuidance').textContent,/19 giây/);
+});
+
+test('automatic session retries keep identity and finishing protects unsaved notes',async()=>{
+ const shared=new Map(),calls=[];let lost=true;
+ const row={session_id:'a'.repeat(32),device_id:'garden',revision:1,name:'W-auto',start:'2026-11-14T01:00:00Z',end:null,calibration_id:'cal',events:[],unknown_intervals:[],notes:'',history_complete:false};
+ const s=setup(shared,async(url,options)=>{
+   calls.push({url,body:JSON.parse(options.body)});
+   if(lost){lost=false;throw new Error('NetworkError');}
+   row.session_id=url.split('/').at(-2);
+   if(url.endsWith('/finish')){row.end='2026-11-14T02:00:00Z';row.revision=2;}
+   return {ok:true,status:200,json:async()=>({...row})};
+ });
+ await s.el('sessionAutoStart').onclick();
+ await s.el('sessionAutoStart').onclick();
+ assert.equal(calls[0].url,calls[1].url);
+ assert.equal(s.el('sessionName').value,'W-auto');
+ assert.equal(s.el('sessionAutoFinish').disabled,false);
+ s.el('sessionNotes').value='unsaved hand watering';
+ await s.el('sessionAutoFinish').onclick();assert.equal(calls.length,2);
+ assert.match(s.el('sessionMessage').textContent,/Lưu các chỉnh sửa/);
+ s.el('sessionNotes').value='';
+ await s.el('sessionAutoFinish').onclick();assert.equal(calls[2].body.revision,1);
+ assert.equal(s.el('sessionAutoFinish').disabled,true);
+ assert.equal(s.el('sessionReviewed').checked,false);assert.equal(s.posts(),0);
+});
+
+test('light chart uses ADC, breaks gaps and suppresses stale or saturated trends',()=>{
+ const s=setup();s.api.select('garden-01');
+ const now=Date.now();s.data.history=Array.from({length:11},(_,i)=>({measured_at:new Date(now-(10-i)*30000).toISOString(),boot_id:'b',light_raw:600+i*10}));
+ s.api.render(s.data);assert.match(s.el('lightTrend').textContent,/Tối hơn tương đối/);
+ assert.equal(s.lightChart().options.scales.y.max,4095);
+ assert.match(s.lightChart().data.datasets[0].label,/ADC/);
+ s.data.history.at(-1).light_raw=4095;s.api.render(s.data);assert.match(s.el('lightTrend').textContent,/bão hòa/);
+ s.data.history.at(-1).light_raw=null;s.api.render(s.data);assert.match(s.el('lightTrend').textContent,/Chưa có/);
+ s.data.history=[s.data.history[0],{...s.data.history.at(-1),light_raw:700}];s.api.render(s.data);
+ assert.ok(s.lightChart().data.datasets[0].data.some(p=>p.y===null));assert.match(s.el('lightTrend').textContent,/khoảng thiếu/);
+ s.data.history=s.data.history.map(p=>({...p,measured_at:new Date(Date.parse(p.measured_at)-600000).toISOString()}));s.api.render(s.data);assert.match(s.el('lightTrend').textContent,/đã cũ/);
 });

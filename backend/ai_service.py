@@ -14,7 +14,8 @@ AI_COLUMNS = ["timestamp", "device_id", "calibration_id", "data_origin", "soil_p
 STATIC_DEMO_BOOT_ID = "seed-synthetic-v2"
 
 
-def make_recent_minute_dataframe(device_id: str, telemetry: list[dict], events: list[dict]) -> pd.DataFrame:
+def make_recent_minute_dataframe(device_id: str, telemetry: list[dict], events: list[dict],
+                                 *, as_of: str | datetime | None = None) -> pd.DataFrame:
     """Aggregate stored device-timestamp telemetry to complete UTC minute bins.
 
     The caller must only use this for devices whose watering history was explicitly
@@ -22,6 +23,10 @@ def make_recent_minute_dataframe(device_id: str, telemetry: list[dict], events: 
     """
     if not telemetry:
         return pd.DataFrame(columns=AI_COLUMNS)
+    closed_before = pd.Timestamp(as_of or datetime.now(timezone.utc))
+    if pd.isna(closed_before) or closed_before.tzinfo is None:
+        raise ValueError("as_of must include timezone")
+    closed_before = closed_before.tz_convert("UTC").floor("min")
     samples: list[dict[str, Any]] = []
     latest_boot = telemetry[-1].get("boot_id")
     for row in telemetry:
@@ -34,12 +39,15 @@ def make_recent_minute_dataframe(device_id: str, telemetry: list[dict], events: 
         if ts.tzinfo is None:
             continue
         ts = ts.tz_convert("UTC")
+        if pd.isna(ts) or ts >= closed_before:
+            continue
         samples.append({"timestamp": ts, "device_id": device_id,
                         "calibration_id": row.get("calibration_id"),
                         "data_origin": row.get("data_origin"),
                         "soil_pct": row.get("soil_pct") if row.get("soil_valid") else None,
                         "temperature_c": row.get("temperature_c") if row.get("air_valid") else None,
                         "humidity_pct": row.get("humidity_pct") if row.get("air_valid") else None,
+                        "_pump_on": bool(row.get("pump_running") or row.get("pump_on")),
                         "_soil_bad": not bool(row.get("soil_valid")),
                         "_air_bad": not bool(row.get("air_valid"))})
     if not samples:
@@ -53,12 +61,15 @@ def make_recent_minute_dataframe(device_id: str, telemetry: list[dict], events: 
         device_id=("device_id", "last"), calibration_id=("calibration_id", "last"),
         data_origin=("data_origin", "last"), soil_pct=("soil_pct", "median"),
         temperature_c=("temperature_c", "median"), humidity_pct=("humidity_pct", "median"),
-        _soil_bad=("_soil_bad", "any"), _air_bad=("_air_bad", "any"))
+        _soil_bad=("_soil_bad", "any"), _air_bad=("_air_bad", "any"),
+        _pump_on=("_pump_on", "any"))
     minute.loc[minute._soil_bad, "soil_pct"] = float("nan")
     minute.loc[minute._air_bad, ["temperature_c", "humidity_pct"]] = float("nan")
-    minute = minute.drop(columns=["_soil_bad", "_air_bad"])
+    minute.loc[minute._pump_on, ["soil_pct", "temperature_c", "humidity_pct"]] = float("nan")
+    minute = minute.drop(columns=["_soil_bad", "_air_bad", "_pump_on"])
     minute = minute.sort_values("timestamp")
     usable_events = []
+    watering_intervals = []
     for event in events:
         if event.get("reason") == "Reboot":
             # Unknown watering duration/time makes downstream features untrustworthy.
@@ -71,7 +82,11 @@ def make_recent_minute_dataframe(device_id: str, telemetry: list[dict], events: 
             return pd.DataFrame(columns=AI_COLUMNS)
         else:
             ended = pd.Timestamp(int(event["started_at"]), unit="s", tz="UTC") + pd.Timedelta(milliseconds=event["actual_ms"])
+        started = pd.Timestamp(int(event["started_at"]), unit="s", tz="UTC")
+        if pd.isna(ended) or ended < started:
+            return pd.DataFrame(columns=AI_COLUMNS)
         usable_events.append(ended)
+        watering_intervals.append((started, ended))
     counts, since = [], []
     for ts in minute.timestamp:
         complete_at = ts + pd.Timedelta(minutes=1)
@@ -80,6 +95,13 @@ def make_recent_minute_dataframe(device_id: str, telemetry: list[dict], events: 
         since.append((complete_at - max(past)).total_seconds() / 60 if past else None)
     minute["water_event_count"] = counts
     minute["minutes_since_water"] = since
+    # Match offline builder: exclude every overlapping minute, including the
+    # ending minute. Counter increments alone miss the middle of long watering.
+    wet = minute.timestamp.map(lambda ts: any(
+        start < ts + pd.Timedelta(minutes=1) and end >= ts
+        for start, end in watering_intervals))
+    minute.loc[wet, ["soil_pct", "temperature_c", "humidity_pct",
+                     "minutes_since_water", "water_event_count"]] = float("nan")
     minute["time_basis"] = "device_timestamp"
     return minute[AI_COLUMNS]
 

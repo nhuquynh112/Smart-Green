@@ -682,3 +682,43 @@ def test_request_identity_survives_database_reopen(tmp_path):
         assert client.get(f"/api/v1/web/devices/{DEVICE}/requests/not-found-request").status_code==404
     finally:
         db.close()
+
+
+@pytest.mark.parametrize("flag", ["commissioned", "storage_fault", "clock_ready", "clock_fault", "server_available"])
+@pytest.mark.parametrize("value", ["false", "true", 0, 1, None])
+def test_reject_malformed_safety_flags_before_storage(client, db, flag, value):
+    item = telemetry()
+    item[flag] = value
+    response = client.post(f"/api/v1/devices/{DEVICE}/telemetry", headers=headers(), json=item)
+    assert response.status_code == 422
+    assert db.one("SELECT count(*) AS n FROM telemetry")["n"] == 0
+
+
+def test_real_prediction_requires_fresh_scoped_review(db):
+    import json
+    start=datetime.now(timezone.utc).replace(second=0,microsecond=0)-timedelta(minutes=16)
+    bundle={'metadata':{'quality':{'data_origin':'real'},'horizon_minutes':30}}
+    seen=[]
+    def predictor(bundle,frame,now):
+        seen.append(frame)
+        return dict(predicted_soil_pct=35.,horizon_minutes=30,as_of=frame.timestamp.iloc[-1].isoformat(),model='persistence')
+    client=SyncASGIClient(create_app(db=db,bundle=bundle,ai_predictor=predictor))
+    for i in range(16):
+        row=telemetry(i+1);row['timestamp']=(start+timedelta(minutes=i)).isoformat()
+        assert client.post(f'/api/v1/devices/{DEVICE}/telemetry',headers=headers(),json=row).status_code==200
+    db.execute('UPDATE devices SET watering_history_complete=1 WHERE device_id=?',(DEVICE,))
+    url=f'/api/v1/web/devices/{DEVICE}/predict'
+    assert client.post(url,json={'watering_history_complete':True}).json()['status']=='unavailable'
+    stamp=(start+timedelta(minutes=15)).isoformat()
+    request={'watering_history_complete':True,'reviewed_until':stamp,'reviewed_boot_id':'wrong'}
+    assert client.post(url,json=request).json()['status']=='unavailable'
+    request['reviewed_boot_id']='boot-1'
+    # A previous watering event is necessary for the v2 features.
+    event_start=int((start-timedelta(hours=1)).timestamp())
+    db.execute('INSERT INTO watering_events(device_id,event_id,started_at,planned_ms,actual_ms,source,reason,received_at,payload) VALUES(?,?,?,?,?,?,?,?,?)',
+               (DEVICE,1,event_start,1000,1000,'MANUAL','Duration',utc_iso(),'{}'))
+    assert client.post(url,json=request).json()['status']=='available'
+    assert len(seen)==1
+    assert client.post(url,json={}).json()['status']=='unavailable'
+    request['reviewed_until']=(start-timedelta(hours=1)).isoformat()
+    assert client.post(url,json=request).json()['status']=='unavailable'

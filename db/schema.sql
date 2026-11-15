@@ -144,3 +144,12 @@ ALTER TABLE commands ADD COLUMN IF NOT EXISTS request_fingerprint text;
 CREATE UNIQUE INDEX IF NOT EXISTS commands_request_id_idx ON commands(device_id,request_id) WHERE request_id IS NOT NULL;
 
 COMMIT;
+
+CREATE TABLE IF NOT EXISTS collection_sessions (
+ session_id TEXT PRIMARY KEY, device_id TEXT NOT NULL REFERENCES devices(device_id),
+ revision INTEGER NOT NULL, active INTEGER NOT NULL, document TEXT NOT NULL);
+CREATE UNIQUE INDEX IF NOT EXISTS collection_sessions_active_device ON collection_sessions(device_id) WHERE active=1;
+CREATE TABLE IF NOT EXISTS collection_session_revisions (
+ session_id TEXT NOT NULL REFERENCES collection_sessions(session_id), revision INTEGER NOT NULL,
+ document TEXT NOT NULL, reviewed_by TEXT NOT NULL, saved_at TEXT NOT NULL,
+ PRIMARY KEY(session_id,revision));

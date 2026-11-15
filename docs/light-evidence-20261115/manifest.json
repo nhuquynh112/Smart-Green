@@ -1,0 +1,36 @@
+{
+  "scope": "Offline light ablation and W05 preparation; no deployment; no raw-data modifications",
+  "files_sha256": {
+    "artifacts/light-experiment-20261115/W01-minutes.csv": "7fd8ef85d3ff16329ca1ea0a1050dc68e76443622329ae054a033ee6f40042ea",
+    "artifacts/light-experiment-20261115/W02-minutes.csv": "f0f32ce944ff44c47bc2140d8a46caec8c8f800ce1c7bc689c26c5b7ca73f66f",
+    "artifacts/light-experiment-20261115/W03-minutes.csv": "040474ff5cb6c5dcb1632f7b9af51a4a8432c85221bc731c15d8925bda36d05b",
+    "artifacts/light-experiment-20261115/W04-minutes.csv": "1e589ccc430b428aa8925c7b029d049a19d4fcd860face143e614a8145b6ee28",
+    "artifacts/light-experiment-20261115/horizon-30/linear_regression_control.joblib": "d4feb03f7a79bb6ec507d4edf45f976292b8d42805d5c8e8d2e81d13340166b5",
+    "artifacts/light-experiment-20261115/horizon-30/linear_regression_light.joblib": "ed5f1162a6789f7912892e886da3625f83a11031a979f3d48aac3dcd77b9d48e",
+    "artifacts/light-experiment-20261115/horizon-30/predictions.csv": "bdeebff2ffd6b94abb5f8ec531f4c821b8eb4a86419e4509bfaa3525f3646832",
+    "artifacts/light-experiment-20261115/horizon-30/random_forest_control.joblib": "d83164fbef087462a81dea5093dc36b92cd43cdba387affe8fdea92140aa2e37",
+    "artifacts/light-experiment-20261115/horizon-30/random_forest_light.joblib": "917cca4d530520d65234ac43583c95425edaa4d2ad90ea7c95f155401fbbfb0e",
+    "artifacts/light-experiment-20261115/horizon-30/report.json": "2df1558877d8742010cc8ff7d6626919670f88de8f1cc29ddddb3aec0b9879e9",
+    "artifacts/light-experiment-20261115/horizon-60/linear_regression_control.joblib": "998b1e1ea2bd31fe945196c60286ca43b0ce02b294ba8faae01e94e4dbf6e159",
+    "artifacts/light-experiment-20261115/horizon-60/linear_regression_light.joblib": "e64799a2cbc803bc59e8e7f5a6f9bb0dd62dc260f120bff094bee9f2a5f0127e",
+    "artifacts/light-experiment-20261115/horizon-60/predictions.csv": "83f883d941733324f4310bba95a71ab9793146119685a35ce1e09d661a15cf54",
+    "artifacts/light-experiment-20261115/horizon-60/random_forest_control.joblib": "e16a391445541334af213f908abdfa461dbf2e32d275f5a96cd1cf97b6f68799",
+    "artifacts/light-experiment-20261115/horizon-60/random_forest_light.joblib": "f65f2928b9284728889945a52df27b13a242c206586cbbf8a45c926f6eafc9c5",
+    "artifacts/light-experiment-20261115/horizon-60/report.json": "2014652e81f43fc2bf3b9d589d54c3d42f92f59ef6ea87aa686b7a63e26652a3",
+    "artifacts/light-experiment-20261115/mae-comparison.png": "85b42bc9a2b004cf5de506a7831b88ecc857c1376e660d9ff688bf88361bd35e",
+    "artifacts/light-experiment-20261115/summary.json": "03137e816b00a012212c72276b057ae5606a4afc18eb40dcfc11eb28525b211c",
+    "artifacts/light-experiment-20261115/write_report.py": "175f6ddae641ad96eda1b25f105fba95e8d98529fecce7c74fbf634da89fa75f",
+    "docs/LIGHT_EXPERIMENT_2026-11-15.md": "86ca90ffc5ae6f2effdec1dd3d264566f8efb2b42100655fca8661ec42e85bdb",
+    "docs/W05_LIGHT_COLLECTION_GUIDE.md": "6aa901d8df08eb644680a1f88538802a5c58afe940f9d9caa42a4b29041e32de",
+    "docs/light-evidence-20261115/summary.json": "03137e816b00a012212c72276b057ae5606a4afc18eb40dcfc11eb28525b211c"
+  },
+  "code_sha256": {
+    "ai/smart_green_ai/light_features.py": "282b05deeddc208107389b32f3c7f8214da3d68236a2e2041ec14f6e004622e7",
+    "ai/smart_green_ai/light_experiment.py": "377b9c4f463477dd54738fa2ada4b4560e5f5523b3388556444e15811fe7c42e",
+    "ai/tests/test_light_features.py": "dc0327c7ca02733cf90dfe45cdfa52a325413c0c9dcb41246c8bfe0f8a399aaa",
+    "backend/collection_sessions.py": "2db7a93aa8d26c6f12f5ebd3fe0ee20bc3fd2a1666a5a2a24ddf143d28bf5e27",
+    "backend/static/index.html": "9c82880df079bca8d50c3d02db3c6c4172358a6878e4e19b78591eff1cebad39",
+    "backend/tests/test_collection_sessions.py": "5770491471b84459cfe8d5b46744c88fb45c2441c55b94d7beef97668a863839",
+    "backend/tests/dashboard_controls.test.cjs": "605137c1bd53c1820fac799dd364b798d729107d69cc9738c7568862dd26050c"
+  }
+}
