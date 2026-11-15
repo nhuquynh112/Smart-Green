@@ -224,3 +224,11 @@ test('light chart uses ADC, breaks gaps and suppresses stale or saturated trends
  assert.ok(s.lightChart().data.datasets[0].data.some(p=>p.y===null));assert.match(s.el('lightTrend').textContent,/khoảng thiếu/);
  s.data.history=s.data.history.map(p=>({...p,measured_at:new Date(Date.parse(p.measured_at)-600000).toISOString()}));s.api.render(s.data);assert.match(s.el('lightTrend').textContent,/đã cũ/);
 });
+
+test('dashboard HTML element IDs are unique',()=>{
+  const html=fs.readFileSync('backend/static/index.html','utf8').split('<script>')[0];
+  const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map(match=>match[1]);
+  const duplicates=ids.filter((id,index)=>ids.indexOf(id)!==index);
+  assert.deepEqual(duplicates,[]);
+  assert.equal(ids.filter(id=>id==='lightChart').length,1);
+});
