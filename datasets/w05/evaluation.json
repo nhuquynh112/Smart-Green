@@ -1,0 +1,80 @@
+{
+  "policy": "Frozen W01-fit models; no fit/tuning/selection on this holdout",
+  "results": [
+    {
+      "horizon_minutes": 30,
+      "windows": 418,
+      "quality": {
+        "input_rows": 464,
+        "grid_minutes": 464,
+        "usable_windows": 418,
+        "missing_minutes": 0,
+        "watering_counter_increments": 0,
+        "device_id": "garden-01",
+        "calibration_id": "soil-2511-979",
+        "data_origin": "real",
+        "time_basis": "device_timestamp",
+        "scope": "Only complete dry history and futures with no additional watering",
+        "v2_windows": 418,
+        "common_windows": 418,
+        "excluded_for_light": 0,
+        "exclude_saturated": false
+      },
+      "mae_pp": {
+        "linear_regression_control": 7.845547055023924,
+        "linear_regression_light": 7.845547055023924,
+        "random_forest_control": 4.036723096428631,
+        "random_forest_light": 4.025577484602605,
+        "persistence": 0.8033562248803828,
+        "linear_extrapolation": 1.4487583516746416
+      },
+      "first_feature": "2026-11-15T05:32:00+00:00",
+      "last_label": "2026-11-15T12:59:00+00:00",
+      "same_test_rows_for_all_models": true
+    },
+    {
+      "horizon_minutes": 60,
+      "windows": 388,
+      "quality": {
+        "input_rows": 464,
+        "grid_minutes": 464,
+        "usable_windows": 388,
+        "missing_minutes": 0,
+        "watering_counter_increments": 0,
+        "device_id": "garden-01",
+        "calibration_id": "soil-2511-979",
+        "data_origin": "real",
+        "time_basis": "device_timestamp",
+        "scope": "Only complete dry history and futures with no additional watering",
+        "v2_windows": 388,
+        "common_windows": 388,
+        "excluded_for_light": 0,
+        "exclude_saturated": false
+      },
+      "mae_pp": {
+        "linear_regression_control": 8.049749738402062,
+        "linear_regression_light": 8.049749738402062,
+        "random_forest_control": 4.364879098272515,
+        "random_forest_light": 4.28722110877607,
+        "persistence": 1.4410783556701032,
+        "linear_extrapolation": 2.8390893221649485
+      },
+      "first_feature": "2026-11-15T05:32:00+00:00",
+      "last_label": "2026-11-15T12:59:00+00:00",
+      "same_test_rows_for_all_models": true
+    }
+  ],
+  "input_sha256": {
+    "artifacts/session-w05-2026-11-15/light-minutes.csv": "89e1206d877029af279365e01cf2114d79c7c7536c3a3f249de66083ae0b7f09",
+    "artifacts/light-experiment-20261115/horizon-30/linear_regression_control.joblib": "d4feb03f7a79bb6ec507d4edf45f976292b8d42805d5c8e8d2e81d13340166b5",
+    "artifacts/light-experiment-20261115/horizon-30/linear_regression_light.joblib": "ed5f1162a6789f7912892e886da3625f83a11031a979f3d48aac3dcd77b9d48e",
+    "artifacts/light-experiment-20261115/horizon-30/random_forest_control.joblib": "d83164fbef087462a81dea5093dc36b92cd43cdba387affe8fdea92140aa2e37",
+    "artifacts/light-experiment-20261115/horizon-30/random_forest_light.joblib": "917cca4d530520d65234ac43583c95425edaa4d2ad90ea7c95f155401fbbfb0e",
+    "artifacts/light-experiment-20261115/horizon-60/linear_regression_control.joblib": "998b1e1ea2bd31fe945196c60286ca43b0ce02b294ba8faae01e94e4dbf6e159",
+    "artifacts/light-experiment-20261115/horizon-60/linear_regression_light.joblib": "e64799a2cbc803bc59e8e7f5a6f9bb0dd62dc260f120bff094bee9f2a5f0127e",
+    "artifacts/light-experiment-20261115/horizon-60/random_forest_control.joblib": "e16a391445541334af213f908abdfa461dbf2e32d275f5a96cd1cf97b6f68799",
+    "artifacts/light-experiment-20261115/horizon-60/random_forest_light.joblib": "f65f2928b9284728889945a52df27b13a242c206586cbbf8a45c926f6eafc9c5"
+  },
+  "can_trigger_pump": false,
+  "limitations": "Overlapping windows are not independent repetitions; same plant; watering history must be reviewed before constructing input."
+}

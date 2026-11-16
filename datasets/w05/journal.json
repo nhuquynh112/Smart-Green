@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "device_id": "garden-01",
+  "calibration_id": "soil-2511-979",
+  "data_origin": "real",
+  "coverage_start": "2026-11-15T05:16:37+00:00",
+  "coverage_end": "2026-11-15T13:00:07+00:00",
+  "history_complete": true,
+  "last_watered_at_before_start": "2026-11-14T12:21:00+07:00",
+  "events": [],
+  "unknown_intervals": [],
+  "notes": [
+    "",
+    "Confirmed by user on 2026-11-16: last watering in W04, no further watering in W05. W04 second watering end ~12:21 is approximate. Same watering cycle as W04."
+  ],
+  "observations": [
+    {
+      "at": "2026-11-15T05:41:37.000Z",
+      "kind": "shade_start",
+      "note": "\tChe cảm biến ánh sáng trong 5 phút"
+    },
+    {
+      "at": "2026-11-15T05:46:58.000Z",
+      "kind": "shade_end",
+      "note": "\tBỏ Che cảm biến ánh sáng trong 5 phút"
+    }
+  ]
+}

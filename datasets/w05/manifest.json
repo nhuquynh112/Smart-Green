@@ -1,0 +1,15 @@
+{
+  "files_sha256": {
+    "README.md": "13f645906af23305fb7e7812e1272f4cb4c5a2045ceb5d914b20cec3d41a6fdf",
+    "evaluation.json": "d2d744ea05c4f8eca648e5e1e48670fdba619d042ee743ec805997a129be2916",
+    "journal.json": "c7f662fe9174126217cccd9f796c6cf4f95ed707c0ec5da162b5502ae6b58c5e",
+    "light-minutes.csv": "89e1206d877029af279365e01cf2114d79c7c7536c3a3f249de66083ae0b7f09",
+    "overview.png": "35f3607924a3411b542365b19aef3f0a0e7ef143979d3f15f391bf4c9650a023",
+    "predictions-30.csv": "dc159399b253cb3e7650614537237865576d147e57a7c56c644288dce2609cf0",
+    "predictions-60.csv": "f2ff79ff4b5d45a186ad80ff87bb63aa31ea98b5c8220b5d3868b7cf0438b464",
+    "provenance.json": "384f9766ee32bd9c3d26ba1d83e86c1c72805a095ca5713f3a5efb8570d67965",
+    "quality.json": "41f8f1c217ce8b73ab6f6e15196bcb43b51009ff8801845193e086508b561876",
+    "telemetry.jsonl": "7580cca6d86d2d5a2e87c328e2786f80bfc35f817e91fdba1926ea59d2f4dea8",
+    "verify.py": "1f6d8c37bc55dba16f1a4e8e365cc83fb4afd7105a1264fa55ea526ef5b284fe"
+  }
+}

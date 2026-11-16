@@ -1,0 +1,62 @@
+{
+  "samples": 927,
+  "minute_quality": {
+    "input_rows": 927,
+    "rows_without_selected_time": 0,
+    "output_minutes": 464,
+    "excluded_minutes": 1,
+    "exclusions": {
+      "outside_journal_coverage": 1
+    },
+    "time_basis": "device_timestamp",
+    "as_of": "2026-11-15T13:00:07+00:00",
+    "time_proxy": false,
+    "data_origin": "real",
+    "feature_version": "v2-watering-events",
+    "automatic_irrigation_approved": false,
+    "note": "Closed-minute aggregates. Proxy timestamps remain labelled; no pump duration inferred from hand watering."
+  },
+  "first_measured": "2026-11-15T05:16:41+00:00",
+  "last_measured": "2026-11-15T12:59:43+00:00",
+  "span_seconds": 27782.0,
+  "max_gap_seconds": 31.0,
+  "boots": [
+    "b706e3485c26d7a6"
+  ],
+  "modes": {
+    "OFF": 927
+  },
+  "pump_on_samples": 0,
+  "adc_range": [
+    581,
+    4095
+  ],
+  "adc_4095": 19,
+  "soil_range": [
+    3.328982,
+    11.29243
+  ],
+  "max_receive_delay_seconds": 6.5280190000000005,
+  "shade_seconds": 321.0,
+  "shade_adc": {
+    "before5min": {
+      "n": 10,
+      "median": 606.5
+    },
+    "covered": {
+      "n": 11,
+      "median": 2819.0
+    },
+    "after5min": {
+      "n": 10,
+      "median": 1179.5
+    }
+  },
+  "eligible_windows": {
+    "30": 418,
+    "60": 388
+  },
+  "duplicates_removed": 0,
+  "sequence_issues": 0,
+  "quality_status": "after user confirmation of prior watering"
+}

@@ -1,6 +1,34 @@
 # Việc còn lại của TV1
 
-## Mốc hiện tại — 12/11/2026 (ưu tiên hơn danh sách lịch sử bên dưới)
+## Mốc hiện tại — 16/11/2026 (ưu tiên hơn phần lịch sử bên dưới)
+
+Ước lượng **85% phần phát triển**, **khoảng 80% mức sẵn sàng bảo vệ**; đây là đánh giá tiến độ theo bằng chứng, không phải dự báo điểm. Chưa có rubric môn học. Không tính upload/build/test mô phỏng là đã nghiệm thu phần cứng.
+
+### Đã hoàn thành trong source và đánh giá offline
+
+- [x] ESP32 → API → PostgreSQL, dashboard và các guard/chống lặp lệnh có kiểm thử.
+- [x] Nhật ký phiên start/finish/save/export, revision và các mốc ánh sáng.
+- [x] Đánh giá W01–W05; light ablation 30/60 phút, baseline và giữ nguyên mô hình cũ.
+- [x] W05: 927 mẫu, 418/388 cửa sổ; RF có sáng MAE 4,0256/4,2872, Persistence 0,8034/1,4411. Không train W05. W04/W05 cùng chu kỳ tưới.
+- [x] Bỏ mật khẩu dự phòng, Chart.js nội bộ, đối soát tưới tay với sự kiện bơm và xử lý reset cũ theo mốc tưới đã biết. 168 Python tests đạt, 7 PostgreSQL variants bỏ qua trong lượt 16/11, 24 Dashboard tests đạt.
+- [x] Chuẩn bị gói dữ liệu nghiên cứu W05 đã chọn lọc tại datasets/w05, giữ bản ZIP/database đầy đủ ở local.
+
+### Cần làm theo thứ tự
+
+1. **Nghiệm thu bản cuối**: ghi commit backend/firmware thực chạy; thử đăng nhập, chart khi mất Internet nhưng còn LAN, tạo/lưu/kết thúc/xuất nhật ký và AI available/unavailable đúng điều kiện. Ảnh đăng nhập thành công không xác nhận toàn bộ luồng hoặc phiên bản backend đang chạy.
+2. **Đo và ghi bằng chứng phần cứng**: ba lần MANUAL cùng thời lượng, hứng riêng đo ml; STOP/OFF, phao, reset, mất mạng/phục hồi và chống lặp. Kiểm tra motor dừng và nước tự chảy riêng; cần video/log gắn phiên bản. Thử AUTO chỉ sau kiểm tra có giám sát, không mở quyền AI điều khiển.
+3. **AI**: ưu tiên thêm một chu kỳ tưới tự nhiên có nhật ký giờ/lượng đo được, giữ vị trí cảm biến; không tưới chỉ để đạt số mẫu. Nếu đổi mô hình/hyperparameter bằng W05 thì W05 thành development, cần giữ phiên tương lai chưa nhìn thấy làm test mới. Không hứa thêm một phiên sẽ làm RF thắng baseline.
+4. **Tích hợp TV1/TV2**: demo AI chỉ quan sát với model tương thích device/calibration; nhật ký đã chọn/revision đúng, fallback khi cũ/thiếu/reset phải hoạt động. Không gọi AI observation là đã đạt AI tự điều khiển nếu rubric yêu cầu phần đó.
+5. **Báo cáo và bảo vệ**: cập nhật TV1_REPORT_DRAFT cũ bằng W01–W05, bảng MAE/giới hạn, sơ đồ mạch thực tế, hiệu chuẩn, ảnh bố trí, bảng truy vết yêu cầu → test → bằng chứng; làm slide/video demo 5–7 phút.
+6. **Tái lập và phục hồi**: kiểm tra clone/môi trường sạch, kiểm thử PostgreSQL riêng, khôi phục backup vào DB thử; không restore lên DB đang dùng để demo. Chốt release commit và lưu video dự phòng.
+
+Chưa xác nhận các mục nghiệm thu live này đạt. Không cần thêm tính năng UI lớn hay chuyển ADC sang lux để hoàn tất phần hiện có. Nếu muốn hướng tới điểm cao, ưu tiên bằng chứng và giải thích trung thực mô hình thất bại, không tăng số mẫu cho đẹp hoặc hứa không còn lỗi.
+
+Báo cáo liên quan: [W05](W05_REVIEW_2026-11-15.md), [bản sửa 16/11](FOLLOWUP_FIXES_2026-11-16.md), [rủi ro đã rà soát](READINESS_REVIEW_2026-11-15.md). Danh sách rủi ro 15/11 là snapshot trước bản sửa, không phải tất cả còn mở.
+
+---
+
+## Mốc lịch sử — 12/11/2026
 
 - Đã sửa luồng điều khiển, trạng thái dashboard và thời điểm tính xung; Python 97 tests + 8 subtests, dashboard 13 tests, native firmware đạt; ESP32 build/upload thành công.
 - Đã nạp bản sửa và restart backend lúc khoảng 21:38; telemetry mẫu 2 xác nhận OFF, pump_running=false, clock_ready=true, không lỗi clock/storage. Chưa thử bơm thật trên bản vừa nạp.

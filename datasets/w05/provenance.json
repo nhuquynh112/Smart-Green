@@ -1,0 +1,16 @@
+{
+  "source_zip_sha256": "1345b2b75c24662c076a04abff17906b04e36fcf3fc4f4a31d84a679855a871a",
+  "removed_observations": [
+    {
+      "original_index": 2,
+      "record": {
+        "at": "2026-11-15T05:46:58.000Z",
+        "kind": "shade_end",
+        "note": "\tBỏ Che cảm biến ánh sáng "
+      },
+      "reason": "Same timestamp and kind; retained first record, note variant preserved here"
+    }
+  ],
+  "watering_history": "User confirmed 2026-11-16: only W04 watering, none added in W05. Approximate last end 2026-11-14T12:21:00+07:00.",
+  "publication": "Sensor fields only; omitted full DB rows, payload, network/runtime diagnostics and original ZIP. Raw measurement values unchanged."
+}
