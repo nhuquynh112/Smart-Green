@@ -215,7 +215,7 @@ test('automatic session retries keep identity and finishing protects unsaved not
 test('light chart uses ADC, breaks gaps and suppresses stale or saturated trends',()=>{
  const s=setup();s.api.select('garden-01');
  const now=Date.now();s.data.history=Array.from({length:11},(_,i)=>({measured_at:new Date(now-(10-i)*30000).toISOString(),boot_id:'b',light_raw:600+i*10}));
- s.api.render(s.data);assert.match(s.el('lightTrend').textContent,/Tối hơn tương đối/);
+ s.api.render(s.data);assert.match(s.el('lightTrend').textContent,/Biến thiên ADC/);
  assert.equal(s.lightChart().options.scales.y.max,4095);
  assert.match(s.lightChart().data.datasets[0].label,/ADC/);
  s.data.history.at(-1).light_raw=4095;s.api.render(s.data);assert.match(s.el('lightTrend').textContent,/bão hòa/);
@@ -231,4 +231,17 @@ test('dashboard HTML element IDs are unique',()=>{
   const duplicates=ids.filter((id,index)=>ids.indexOf(id)!==index);
   assert.deepEqual(duplicates,[]);
   assert.equal(ids.filter(id=>id==='lightChart').length,1);
+});
+
+test('offline chart and source-aware evaluation caption',()=>{
+ const html=fs.readFileSync('backend/static/index.html','utf8');
+ assert.ok(html.includes('src="/static/vendor/chart.umd-4.4.7.min.js"'));
+ assert.ok(!/<script[^>]+src="https?:/.test(html));
+ assert.ok(fs.existsSync('backend/static/vendor/Chart.js-LICENSE.md'));
+ const s=setup();
+ for(const origin of ['real','synthetic',null]){
+  s.data.model_evaluation=origin?{data_origin:origin,test_mae:{}}:null;
+  s.api.render(s.data);
+  assert.match(s.el('evaluationScope').textContent,origin==='real'?/thực nghiệm/:origin==='synthetic'?/giả lập/:/Chưa có/);
+ }
 });

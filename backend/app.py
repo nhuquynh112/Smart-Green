@@ -168,7 +168,9 @@ def _configured_keys() -> dict[str, str]:
 
 def _admin_auth(credentials: HTTPBasicCredentials | None = Depends(WEB_SECURITY)) -> str:
     expected_user = os.getenv("SG_WEB_USER", "admin")
-    expected_password = os.getenv("SG_WEB_PASSWORD", "smartgreen2026")
+    expected_password = os.getenv("SG_WEB_PASSWORD", "")
+    if not expected_password.strip():
+        raise HTTPException(503, detail="Chưa cấu hình mật khẩu quản trị SG_WEB_PASSWORD")
     if (credentials is None or not secrets.compare_digest(credentials.username, expected_user)
             or not secrets.compare_digest(credentials.password, expected_password)):
         from fastapi import status
@@ -249,6 +251,8 @@ def create_app(db: Database | None = None, bundle: dict | None = None,
                     events = database.all("SELECT * FROM watering_events WHERE device_id=? AND reason IN ('Manual','Scheduled') ORDER BY started_at", (device_id,))
                 else:
                     events = database.all("SELECT * FROM watering_events WHERE device_id=? ORDER BY started_at", (device_id,))
+                history_error = None
+                journal_source = None
                 if latest_origin == "real":
                     try:
                         reviewed_until = _parse_time(review.get('reviewed_until'), 'reviewed_until')
@@ -258,11 +262,20 @@ def create_app(db: Database | None = None, bundle: dict | None = None,
                         # Never apply approval to samples beyond the user-reviewed watermark.
                         rows = [r for r in rows if r.get('boot_id') == review['reviewed_boot_id'] and
                                 _parse_time(r['measured_at'], 'measured_at') <= reviewed_until]
-                    except (ValueError, TypeError, HTTPException):
+                        session = database.one('SELECT * FROM collection_sessions WHERE session_id=? AND device_id=?',
+                                               (review.get('session_id'), device_id))
+                        if not session or type(review.get('session_revision')) is not int or session['revision'] != review['session_revision']:
+                            raise ValueError('Chọn phiên nhật ký đã lưu và tải lại revision mới nhất trước khi dự báo')
+                        from backend.reviewed_history import reconcile
+                        rows, events = reconcile(json.loads(session['document']), device_id,
+                                                 latest_row['calibration_id'], rows, events, reviewed_until)
+                        journal_source = dict(session_id=session['session_id'], revision=session['revision'])
+                    except (ValueError, TypeError, KeyError, HTTPException) as exc:
                         rows = []
+                        history_error = str(exc)
                 recent = make_recent_minute_dataframe(device_id, rows, events)
                 if recent.empty:
-                    result = {"status": "unavailable", "reason": "no valid measured telemetry history", "can_trigger_pump": False}
+                    result = {"status": "unavailable", "reason": history_error or "no valid measured telemetry history", "can_trigger_pump": False}
                 else:
                     prediction_now = datetime.now(timezone.utc)
                     if is_static_model_demo:
@@ -271,6 +284,8 @@ def create_app(db: Database | None = None, bundle: dict | None = None,
                     kwargs = {"now": prediction_now.isoformat()}
                     result = (run_prediction(*args, predictor=app.state.ai_predictor, **kwargs)
                               if app.state.ai_predictor else run_prediction(*args, **kwargs))
+        if latest_origin == "real" and result["status"] == "available":
+            result["reviewed_journal"] = journal_source
         raw = canonical_json(result)
         quality = bundle.get("metadata", {}).get("quality", {}) if bundle else {}
         values = (device_id, result.get("as_of"), result.get("available_at"), result.get("horizon_minutes"),

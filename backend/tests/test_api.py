@@ -513,7 +513,8 @@ def test_rejects_invalid_control_limits(client):
     assert client.post(f'/api/v1/devices/{DEVICE}/telemetry',headers=headers(),json=row).status_code==422
 
 
-def test_http_route_auth_and_quota_end_to_end(db):
+def test_http_route_auth_and_quota_end_to_end(db, monkeypatch):
+    monkeypatch.setenv("SG_WEB_PASSWORD", "configured-test-password")
     import asyncio
     import json
 
@@ -696,20 +697,22 @@ def test_reject_malformed_safety_flags_before_storage(client, db, flag, value):
 
 def test_real_prediction_requires_fresh_scoped_review(db):
     import json
-    start=datetime.now(timezone.utc).replace(second=0,microsecond=0)-timedelta(minutes=16)
+    start=datetime.now(timezone.utc).replace(second=0,microsecond=0)-timedelta(minutes=17)
     bundle={'metadata':{'quality':{'data_origin':'real'},'horizon_minutes':30}}
     seen=[]
     def predictor(bundle,frame,now):
+        from smart_green_ai.features import latest_features
+        assert len(latest_features(frame)) == 1
         seen.append(frame)
         return dict(predicted_soil_pct=35.,horizon_minutes=30,as_of=frame.timestamp.iloc[-1].isoformat(),model='persistence')
     client=SyncASGIClient(create_app(db=db,bundle=bundle,ai_predictor=predictor))
-    for i in range(16):
+    for i in range(17):
         row=telemetry(i+1);row['timestamp']=(start+timedelta(minutes=i)).isoformat()
         assert client.post(f'/api/v1/devices/{DEVICE}/telemetry',headers=headers(),json=row).status_code==200
     db.execute('UPDATE devices SET watering_history_complete=1 WHERE device_id=?',(DEVICE,))
     url=f'/api/v1/web/devices/{DEVICE}/predict'
     assert client.post(url,json={'watering_history_complete':True}).json()['status']=='unavailable'
-    stamp=(start+timedelta(minutes=15)).isoformat()
+    stamp=(start+timedelta(minutes=16)).isoformat()
     request={'watering_history_complete':True,'reviewed_until':stamp,'reviewed_boot_id':'wrong'}
     assert client.post(url,json=request).json()['status']=='unavailable'
     request['reviewed_boot_id']='boot-1'
@@ -717,8 +720,33 @@ def test_real_prediction_requires_fresh_scoped_review(db):
     event_start=int((start-timedelta(hours=1)).timestamp())
     db.execute('INSERT INTO watering_events(device_id,event_id,started_at,planned_ms,actual_ms,source,reason,received_at,payload) VALUES(?,?,?,?,?,?,?,?,?)',
                (DEVICE,1,event_start,1000,1000,'MANUAL','Duration',utc_iso(),'{}'))
-    assert client.post(url,json=request).json()['status']=='available'
+    assert client.post(url,json=request).json()['status']=='unavailable'
+    doc=dict(name='review',start=start.isoformat(),end=datetime.now(timezone.utc).isoformat(),
+             calibration_id='cal-v1',last_watered_at_before_start=datetime.fromtimestamp(event_start+1,timezone.utc).isoformat(),
+             events=[],unknown_intervals=[],notes='',history_complete=True)
+    db.execute('INSERT INTO collection_sessions VALUES(?,?,?,?,?)',('a'*32,DEVICE,1,0,canonical_json(doc)))
+    request.update(session_id='a'*32,session_revision=1)
+    result=client.post(url,json=request).json()
+    assert result['status']=='available' and result['can_trigger_pump'] is False
+    assert result['reviewed_journal']=={'session_id':'a'*32,'revision':1}
+    request['session_revision']=2
+    assert client.post(url,json=request).json()['status']=='unavailable'
+    request['session_revision']=1
     assert len(seen)==1
     assert client.post(url,json={}).json()['status']=='unavailable'
     request['reviewed_until']=(start-timedelta(hours=1)).isoformat()
     assert client.post(url,json=request).json()['status']=='unavailable'
+
+
+def test_admin_password_must_be_explicit(monkeypatch):
+    from fastapi import HTTPException
+    from fastapi.security import HTTPBasicCredentials
+    monkeypatch.delenv('SG_WEB_PASSWORD',raising=False)
+    with pytest.raises(HTTPException) as exc:
+        _admin_auth(HTTPBasicCredentials(username='admin',password='smartgreen2026'))
+    assert exc.value.status_code==503
+    monkeypatch.setenv('SG_WEB_PASSWORD','configured-test-password')
+    assert _admin_auth(HTTPBasicCredentials(username='admin',password='configured-test-password'))=='admin'
+    with pytest.raises(HTTPException) as exc:
+        _admin_auth(HTTPBasicCredentials(username='admin',password='smartgreen2026'))
+    assert exc.value.status_code==401

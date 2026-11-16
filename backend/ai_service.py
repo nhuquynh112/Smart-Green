@@ -77,12 +77,12 @@ def make_recent_minute_dataframe(device_id: str, telemetry: list[dict], events: 
         if event.get("reason") == "Manual":
             if event.get("ended_at") is None:
                 return pd.DataFrame(columns=AI_COLUMNS)
-            ended = pd.Timestamp(int(event["ended_at"]), unit="s", tz="UTC")
+            ended = pd.Timestamp(float(event["ended_at"]), unit="s", tz="UTC")
         elif event.get("actual_ms") is None:
             return pd.DataFrame(columns=AI_COLUMNS)
         else:
-            ended = pd.Timestamp(int(event["started_at"]), unit="s", tz="UTC") + pd.Timedelta(milliseconds=event["actual_ms"])
-        started = pd.Timestamp(int(event["started_at"]), unit="s", tz="UTC")
+            ended = pd.Timestamp(float(event["started_at"]), unit="s", tz="UTC") + pd.Timedelta(milliseconds=event["actual_ms"])
+        started = pd.Timestamp(float(event["started_at"]), unit="s", tz="UTC")
         if pd.isna(ended) or ended < started:
             return pd.DataFrame(columns=AI_COLUMNS)
         usable_events.append(ended)
