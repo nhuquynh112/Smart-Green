@@ -1,0 +1,100 @@
+{
+  "version": "experimental-delta-v1",
+  "fit": [
+    "W01"
+  ],
+  "validation": [
+    "W02",
+    "W03"
+  ],
+  "holdouts": [
+    "W04",
+    "W05"
+  ],
+  "cycles": {
+    "W01": "C1",
+    "W02": "C1",
+    "W03": "C1",
+    "W04": "C2",
+    "W05": "C2"
+  },
+  "selection": "Lowest mean of W02 and W03 MAE, equal session weights; persistence wins exact ties. No refit.",
+  "limitations": "Validation is later time in the SAME C1 cycle, not independent cycle validation. W04/W05 jointly test transfer to C2, not two independent cycles. Previous absolute-model results on W05 were already observed. No new untouched prospective cycle exists.",
+  "target": "soil_future - soil_current; reconstruct current + delta then clip to [0,100]",
+  "features": {
+    "control": [
+      "soil_pct",
+      "soil_lag_5",
+      "soil_lag_15",
+      "slope_15",
+      "temperature_c",
+      "humidity_pct",
+      "minutes_since_water",
+      "hour_sin",
+      "hour_cos"
+    ],
+    "light": [
+      "soil_pct",
+      "soil_lag_5",
+      "soil_lag_15",
+      "slope_15",
+      "temperature_c",
+      "humidity_pct",
+      "minutes_since_water",
+      "hour_sin",
+      "hour_cos",
+      "light_raw",
+      "light_lag_5",
+      "light_lag_15",
+      "light_mean_15",
+      "light_slope_15"
+    ]
+  },
+  "candidates": {
+    "ridge": [
+      {
+        "alpha": 1.0
+      },
+      {
+        "alpha": 10.0
+      },
+      {
+        "alpha": 100.0
+      }
+    ],
+    "hist_gradient_boosting": [
+      {
+        "max_leaf_nodes": 3,
+        "l2_regularization": 10.0
+      },
+      {
+        "max_leaf_nodes": 7,
+        "l2_regularization": 10.0
+      }
+    ],
+    "random_forest": [
+      {
+        "max_depth": 3,
+        "min_samples_leaf": 20
+      },
+      {
+        "max_depth": 6,
+        "min_samples_leaf": 20
+      }
+    ]
+  },
+  "seed": 42,
+  "moisture_bins_current_soil": [
+    0,
+    5,
+    10,
+    20,
+    40,
+    60,
+    100
+  ],
+  "paired_rows": "Both feature sets use common eligible windows; complete 16-minute history and no watering/missing measurements through forecast horizon.",
+  "saturation": "Retain raw ADC 4095 as censored readings; report exclusion sensitivity, no lux conversion.",
+  "automatic_irrigation_approved": false,
+  "can_trigger_pump": false
+}

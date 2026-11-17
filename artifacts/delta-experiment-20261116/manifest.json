@@ -1,0 +1,21 @@
+{
+  "evaluation/W04-predictions-30.csv": "db4e3e5ad9408ac55224cda9df7904627bf302f9b8b89082e266bc790b8e4f93",
+  "evaluation/W04-predictions-60.csv": "28f77ae2825f03435e1f8c602168462bbd3e2f2bbbf65ef17062812fb548ad1a",
+  "evaluation/W05-predictions-30.csv": "562631f792680ed8d4ed1beaf3df7f09805644813405f52445c39f4563a6d7ed",
+  "evaluation/W05-predictions-60.csv": "b72cc66790d5a57c90575164fb4b69daa7f487d77c5c0d5a1bc1c524cd3f216a",
+  "evaluation/report.json": "827af62b395d203b41704c07ed3ba142a2bab278803538ba10ad994101caa227",
+  "frozen.json": "5fc114952001f3682fb66985d4a4a89ee212d5356970c431f3a027bbe772dc49",
+  "horizon-30/hist_gradient_boosting_control.joblib": "e4de5fd965e97fc31959da90e32e1e6871fc09af1292a26db6ba1602c3f110a1",
+  "horizon-30/hist_gradient_boosting_light.joblib": "06a01314faae1b2b5ed44624dc5ed2c94d94976ab7b13d55c660ce1eccaf7fe1",
+  "horizon-30/random_forest_control.joblib": "f4a77e295da2738e609a89bd83d7d18126c098bd96e58f37ee91667de4934693",
+  "horizon-30/random_forest_light.joblib": "1d0b0880e7a5cbfa759f19119ca3cae56378e1880957c74052008aba78456d55",
+  "horizon-30/ridge_control.joblib": "c799a43e792abe53a9e20bd89c9e13c18c35fd7b89340af5701bcff153d83bf4",
+  "horizon-30/ridge_light.joblib": "e232eb5e41a4d9d9af88ad2c40eb0223bd0c655f072e1dddc64bb3293d6cc0d8",
+  "horizon-60/hist_gradient_boosting_control.joblib": "d064d5e2d6602a4f116ddeb3c08e7a64f57f89f0dd0bb7bc5f4b36b42d4a0bd4",
+  "horizon-60/hist_gradient_boosting_light.joblib": "ffb947886402ba04128a01e919adcc8a18dfd69834a3d757f968d90e32444f2b",
+  "horizon-60/random_forest_control.joblib": "c594963d787eab19c4cad951c549278f12c083585ac2262e3d7d8753bbb17c5c",
+  "horizon-60/random_forest_light.joblib": "10083a62d1244a6796c953dff9b68788e2780cbbb05fb75ba57bf4d8c1252eb1",
+  "horizon-60/ridge_control.joblib": "916dc39119ee617f93f85c907a05a020837c7ed97bc80db0dc85bd46dc898a4f",
+  "horizon-60/ridge_light.joblib": "d4b9e9bed0b35aa254e33f2631a225784c3eb329341de09d4aa8ccbab9bc525c",
+  "protocol.json": "645f7bcc8c437cdb2d042738e03b7c95c97eee9a44a0a95f1ef3c48f484fdc78"
+}
