@@ -2,9 +2,14 @@
 
 **Hệ thống tưới cây thông minh tích hợp IoT và AI**, sử dụng ESP32 để theo dõi môi trường trồng cây, thu thập dữ liệu và phát triển cơ chế tưới có kiểm soát.
 
-Dự án hướng đến một hệ thống gồm thiết bị IoT, FastAPI backend, PostgreSQL, dashboard web và mô hình dự đoán độ ẩm đất trước 30 phút. AI cung cấp đề xuất; ESP32 chịu trách nhiệm kiểm tra điều kiện và giới hạn an toàn trước khi điều khiển bơm.
+Dự án hướng đến một hệ thống gồm thiết bị IoT, FastAPI backend, PostgreSQL, dashboard web và mô hình dự đoán độ ẩm đất trước 30/60 phút. AI hiện chỉ dự báo, không có quyền điều khiển bơm; ESP32 kiểm tra điều kiện và giới hạn an toàn cho các lệnh điều khiển.
 
-> **Trạng thái ngày 07/11/2026:** Đã hoàn thành kiểm thử phần cứng cơ bản, hiệu chuẩn cảm biến độ ẩm đất và thử bơm nước thực tế. Chưa triển khai tưới tự động lên cây hoặc điều khiển bơm từ web. Firmware thử nghiệm đang khóa bơm với `ENABLE_PUMP_TEST = false`.
+> **Cập nhật 17/11/2026:** Đã có backend/Dashboard, dữ liệu thực W01–W05 và thí nghiệm AI delta. Delta cải thiện so với RF tuyệt đối nhưng chưa thắng Persistence ổn định; chưa thay model production hoặc phê duyệt AI tưới tự động. Nghiệm thu bản phần cứng cuối và hồ sơ bảo vệ còn cần hoàn tất.
+
+- [Việc còn lại của TV1](docs/TV1_REMAINING_TASKS.md)
+- [Báo cáo AI delta và bảng MAE 30/60 phút](docs/DELTA_AI_EVALUATION_2026-11-17.md)
+- [Chạy backend/Dashboard](backend/README.md)
+- [Gói dữ liệu W05 và cách kiểm chứng](datasets/w05/README.md)
 
 ## Mục tiêu
 
@@ -12,7 +17,7 @@ Dự án hướng đến một hệ thống gồm thiết bị IoT, FastAPI back
 - Lưu dữ liệu theo thời gian để quan sát môi trường và đánh giá nhu cầu tưới.
 - Cung cấp dashboard theo dõi cảm biến, lịch sử tưới và điều khiển thủ công có xác nhận.
 - Xây dựng Auto-Rule với hysteresis, khoảng nghỉ và hạn mức tưới.
-- Dự đoán độ ẩm đất sau 30 phút, so sánh với baseline và đánh giá bằng MAE.
+- Dự đoán độ ẩm đất sau 30/60 phút, so sánh với baseline và đánh giá bằng MAE.
 
 ## Tiến độ hiện tại
 
@@ -21,17 +26,17 @@ Dự án hướng đến một hệ thống gồm thiết bị IoT, FastAPI back
 | Cảm biến, relay và máy bơm | Đã lắp ráp và kiểm thử cơ bản trên phần cứng |
 | Firmware `bringup` | Đã thử đọc cảm biến, xuất JSON, hiệu chuẩn và bơm có giám sát |
 | Firmware vận hành `esp32dev` | Đã có mã cho điều khiển, mạng và các cơ chế bảo vệ; còn cần nghiệm thu trên thiết bị và backend thật |
-| Thu thập và xử lý dữ liệu | Có log Serial và công cụ xử lý; cần hoàn thiện kiểm tra chất lượng dữ liệu thực |
-| PostgreSQL | Có script nhập dữ liệu bench; chưa xác nhận đã nhập vào database |
-| FastAPI và dashboard | Chưa triển khai hệ thống tích hợp; hiện có backend mô phỏng phục vụ kiểm thử |
-| AI dự đoán độ ẩm | Có pipeline và mô hình thử nghiệm; dữ liệu thực chưa đủ để đánh giá hiệu quả |
+| Thu thập và xử lý dữ liệu | Đã xử lý W01–W05, có nhật ký, báo cáo chất lượng và checksum |
+| PostgreSQL | Đã dùng để lưu các phiên thu thực nghiệm; cần nghiệm thu khôi phục backup |
+| FastAPI và dashboard | Đã có telemetry, điều khiển, nhật ký phiên và xuất dữ liệu; cần nghiệm thu bản cuối |
+| AI dự đoán độ ẩm | Đã đánh giá 30/60 phút trên W01–W05; còn thiếu nhiều chu kỳ độc lập để xác nhận tổng quát hóa |
 | Tưới tự động trên cây | Chưa triển khai |
 
 Việc đã có mã nguồn hoặc kiểm thử trên máy tính không thay thế nghiệm thu phần cứng và thử nghiệm toàn hệ thống.
 
 ## Kiến trúc hệ thống
 
-Luồng đã kiểm thử:
+Luồng bringup ban đầu:
 
 ```text
 Cảm biến → ESP32 / bringup → Serial JSON → Log trên máy tính
@@ -39,7 +44,7 @@ Cảm biến → ESP32 / bringup → Serial JSON → Log trên máy tính
                   └── Relay → Máy bơm (thử có giám sát, hiện đã khóa)
 ```
 
-Kiến trúc mục tiêu:
+Kiến trúc đã có trong mã nguồn (nghiệm thu bản cuối còn mở):
 
 ```text
 Cảm biến → ESP32 ←──── Wi-Fi / HTTP ────→ FastAPI ←──→ Dashboard web
@@ -93,10 +98,10 @@ soil_pct = clamp(100 × (soil_raw − dry_raw) / (wet_raw − dry_raw), 0, 100)
 | --- | --- | --- |
 | Thiết bị IoT | ESP32, Arduino Framework, PlatformIO, C++ | Có firmware thử mạch và firmware vận hành chờ nghiệm thu |
 | Xử lý dữ liệu | Python | Có công cụ thu Serial, làm sạch và kiểm tra dữ liệu |
-| Backend | FastAPI | Dự kiến tích hợp |
-| Cơ sở dữ liệu | PostgreSQL | Có script nhập dữ liệu bench |
-| Giao diện | Dashboard web | Dự kiến phát triển |
-| AI | pandas, NumPy, scikit-learn | Có baseline, Linear Regression và Random Forest |
+| Backend | FastAPI | Telemetry, lệnh, phiên thu, xuất dữ liệu và dự báo quan sát |
+| Cơ sở dữ liệu | PostgreSQL | Lưu dữ liệu thực nghiệm; SQLite dùng cho test/demo |
+| Giao diện | Dashboard web | Cảm biến, biểu đồ, điều khiển và nhật ký phiên |
+| AI | pandas, NumPy, scikit-learn | Persistence, Linear Regression, RF; thử nghiệm delta Ridge/HGB/RF |
 | Kiểm thử | pytest, kiểm thử C++ native | Có bộ kiểm thử logic và tích hợp mô phỏng |
 
 ## Cấu trúc thư mục
@@ -110,6 +115,9 @@ Smart-Green/
 │   ├── test/native/      # Kiểm thử logic C++ trên máy tính
 │   ├── tool/             # Script parse_logs.py
 │   └── platformio.ini    # Hai môi trường: bringup và esp32dev
+├── backend/              # FastAPI, Dashboard, database adapter và tests
+├── datasets/             # Gói nghiên cứu đã chọn lọc (W05)
+├── artifacts/            # Model, dữ liệu và kết quả thực nghiệm được chọn để theo dõi
 ├── ai/                   # Pipeline dự đoán và kiểm thử AI
 ├── db/                   # SQL nhập dữ liệu bench
 ├── tools/                # Thu Serial, chuẩn bị dữ liệu, mô phỏng và báo cáo
@@ -120,7 +128,7 @@ Smart-Green/
 └── README.md
 ```
 
-Các thư mục dữ liệu cục bộ như `firmware/logs/`, `data/` và `artifacts/` phục vụ thu thập, xử lý hoặc xuất kết quả; chúng không phải dữ liệu mẫu bắt buộc có trong Git.
+Log, môi trường, cấu hình cục bộ và output mới được ignore. Một số gói `artifacts/` được theo dõi có chủ đích để giữ model và bằng chứng thực nghiệm; không xóa chỉ vì là file sinh tự động. Các gói có manifest phải giữ nguyên byte. Báo cáo có ngày là lịch sử thí nghiệm, không mặc định phản ánh trạng thái mới nhất.
 
 ## Bắt đầu sử dụng
 
@@ -203,7 +211,9 @@ Xem thêm [hướng dẫn hiệu chuẩn và thu dữ liệu thực](docs/CALIBR
 ### 4. Kiểm thử trên máy tính
 
 ```bash
-python -m pytest -q ai/tests tools/tests integration
+python -m pip install -r backend/requirements.txt
+python -m pytest -q
+node --test backend/tests/dashboard_controls.test.cjs
 bash tools/test_firmware.sh
 ```
 
@@ -225,17 +235,18 @@ Kết quả của lệnh trên sử dụng **dữ liệu giả lập**, chỉ ph
 - Dữ liệu cảm biến không hợp lệ không được dùng để quyết định tưới.
 - Điều khiển từ web cần có xác nhận, kiểm tra hiệu lực lệnh và chống thực thi lặp.
 - Hành vi khi mất mạng, reset hoặc mất điện phải được nghiệm thu trước khi vận hành tự động.
-- Đề xuất AI phải đi qua các điều kiện an toàn tại ESP32.
+- AI hiện không tạo lệnh bơm; mọi mở rộng điều khiển AI cần kiểm thử và phê duyệt riêng.
 
 Firmware runtime đã có mã cho nhiều cơ chế trên, nhưng còn cần nghiệm thu thực tế. Bộ hẹn giờ phần mềm không thay thế mạch bảo vệ điện hoặc xử lý được mọi hỏng hóc cơ khí của relay.
 
-## Lộ trình phát triển
+## Công việc còn lại
 
-1. **Hoàn thiện dữ liệu:** rà soát parser, xử lý dữ liệu lỗi / thiếu / trùng, hoàn thiện lưu trữ PostgreSQL và thu dữ liệu khi đất khô tự nhiên.
-2. **Backend và dashboard:** xây dựng FastAPI, API nhận / truy vấn telemetry, giao diện cảm biến, lịch sử tưới và điều khiển thủ công có giới hạn.
-3. **Tưới tự động:** nghiệm thu Auto-Rule, hysteresis, thời gian nghỉ, hạn mức và các tình huống thiếu nước / mất mạng trước khi thử trên cây.
-4. **Đánh giá AI:** dự đoán trước 30 phút; so sánh baseline giữ nguyên giá trị gần nhất, xu hướng tuyến tính và mô hình ML bằng MAE trên dữ liệu chia theo thời gian.
-5. **Hoàn thiện mô hình:** đo lưu lượng bơm, cố định phao / ống / cảm biến, bảo vệ mạch khỏi nước, thử toàn hệ thống và chuẩn bị báo cáo / demo.
+1. Nghiệm thu phiên bản cuối: backend/Dashboard, nhật ký, xuất dữ liệu và dự báo có/không đủ điều kiện.
+2. Ghi bằng chứng phần cứng: ba lần tưới đo riêng, STOP/OFF, phao, reset và phục hồi mạng; không coi ACK là đo lưu lượng thực tế.
+3. Thu thêm chu kỳ tưới tự nhiên, giữ chu kỳ tương lai chưa quan sát làm test; không dùng lại W05 để vừa chọn model vừa công bố kiểm định độc lập.
+4. Hoàn thiện báo cáo, sơ đồ mạch thực tế, slide/video và kiểm tra backup/restore trên database thử.
+
+Xem [danh sách TV1](docs/TV1_REMAINING_TASKS.md) để phân biệt phần đã kiểm thử offline với phần chưa nghiệm thu thực tế.
 
 ## Tài liệu liên quan
 

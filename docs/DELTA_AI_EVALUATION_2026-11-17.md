@@ -136,7 +136,7 @@ Chọn các cửa sổ không chồng lấn toàn bộ lịch sử–nhãn, bắ
 - Code: `ai/smart_green_ai/delta_experiment.py`; tests: `ai/tests/test_delta_experiment.py`.
 - Model delta: `artifacts/delta-experiment-20261116/horizon-{30,60}/*.joblib` (12 bundle, riêng biệt với production).
 - Protocol/validation/hash: `artifacts/delta-experiment-20261116/frozen.json`; được lưu trước đánh giá W05. SHA256: `5fc114952001f3682fb66985d4a4a89ee212d5356970c431f3a027bbe772dc49`.
-- Kết quả/predictions: `artifacts/delta-experiment-20261116/evaluation/`; bản JSON bằng chứng trong `docs/evidence/delta-20261117/`.
+- Kết quả/predictions: `artifacts/delta-experiment-20261116/evaluation/`; JSON dùng trực tiếp tại thư mục artifacts này; biểu đồ và manifest đối chiếu ở `docs/evidence/delta-20261117/` (không lưu JSON trùng).
 - Artifacts đặt tên theo ngày bắt đầu 16/11; báo cáo hoàn tất 17/11. Không ghi đè output cũ. Model joblib chỉ load từ nguồn tin cậy. Môi trường/version được ghi trong frozen.json.
 
 ```bash

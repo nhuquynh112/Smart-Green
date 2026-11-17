@@ -1,8 +1,8 @@
 {
   "ai/smart_green_ai/delta_experiment.py": "01d99162df3e10397448e90f9eca5c099eccad6a0ed1f5b9f8060927a57ecfaf",
   "ai/tests/test_delta_experiment.py": "ad71a14cace73adf9598df524f2208eee234671e9ad713df8e0aae73a0120a45",
-  "docs/DELTA_AI_EVALUATION_2026-11-17.md": "504d427507c5dcc6a236485c3edad616be5d5979b273226826eb5c6a9b5b39b3",
-  "docs/evidence/delta-20261117/frozen.json": "5fc114952001f3682fb66985d4a4a89ee212d5356970c431f3a027bbe772dc49",
-  "docs/evidence/delta-20261117/report.json": "827af62b395d203b41704c07ed3ba142a2bab278803538ba10ad994101caa227",
-  "docs/evidence/delta-20261117/mae-comparison.png": "95da2233202332d163c0f778a07416f17a50ff98da8b03a51518ca2c41103da6"
+  "docs/DELTA_AI_EVALUATION_2026-11-17.md": "f75c2e92cb780ab63084c6d0c0c825595be375e055042d546ea61835bb44b9dc",
+  "docs/evidence/delta-20261117/mae-comparison.png": "95da2233202332d163c0f778a07416f17a50ff98da8b03a51518ca2c41103da6",
+  "artifacts/delta-experiment-20261116/frozen.json": "5fc114952001f3682fb66985d4a4a89ee212d5356970c431f3a027bbe772dc49",
+  "artifacts/delta-experiment-20261116/evaluation/report.json": "827af62b395d203b41704c07ed3ba142a2bab278803538ba10ad994101caa227"
 }

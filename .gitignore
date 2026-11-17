@@ -18,3 +18,20 @@ artifacts/
 .venv-ai/
 firmware/logs/
 firmware/.vscode/
+
+# Local configuration, database sidecars and editor/OS temporary files.
+.env.*
+!.env.example
+!.env.*.example
+*.sqlite3-wal
+*.sqlite3-shm
+*.sqlite3-journal
+*.py[cod]
+.coverage
+.coverage.*
+htmlcov/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~

@@ -120,3 +120,15 @@ def test_w05_observations_export_and_bounds(system):
     assert system[0].one('SELECT count(*) AS n FROM commands')['n']==0
     doc['observations'][0]['at']=(datetime.now(timezone.utc)+timedelta(hours=1)).isoformat()
     with pytest.raises(ValueError):checked_document(doc,'garden')
+
+
+def test_list_sessions_orders_actual_time_across_offsets(system):
+    # 10:00 +07 is earlier than 04:00 UTC despite its larger text representation.
+    first = document()
+    first.update(start='2026-01-01T10:00:00+07:00', end='2026-01-01T10:30:00+07:00',
+                 last_watered_at_before_start=None)
+    second = dict(first, start='2026-01-01T04:00:00Z', end='2026-01-01T04:30:00Z')
+    save(system, first, sid='e'*32)
+    save(system, second, sid='f'*32)
+    rows = system[2]['list_sessions']('garden')
+    assert [r['session_id'] for r in rows] == ['f'*32, 'e'*32]

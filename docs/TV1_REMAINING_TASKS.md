@@ -1,5 +1,14 @@
 # Việc còn lại của TV1
 
+## Bổ sung 17/11/2026
+
+- Hoàn tất thí nghiệm delta Ridge/HGB/RF với/không ánh sáng cho 30/60 phút; W05 không fit/tune trong thí nghiệm này. Xem [báo cáo delta](DELTA_AI_EVALUATION_2026-11-17.md). Không thay production: chưa thắng Persistence ổn định.
+- Rà soát Git: bỏ hai JSON delta trùng, giữ nguồn chuẩn trong artifacts và cập nhật manifest; bảo toàn toàn bộ dữ liệu/model cũ. Thêm ignore file môi trường/cache và giữ byte của các gói checksum khi checkout.
+- Sửa thứ tự danh sách phiên khi timestamp có múi giờ khác nhau; regression test đã tái hiện lỗi trước sửa.
+- Lượt kiểm thử sau sửa: 176 Python tests và 8 subtests đạt, 8 biến thể PostgreSQL bỏ qua do chưa cấu hình database test riêng; suite Dashboard và firmware native đạt. Đây không phải nghiệm thu bơm thật. Không restart backend, sửa database hoặc gửi lệnh thiết bị trong lượt rà soát này.
+- README đã cập nhật; các báo cáo có ngày và bản nháp cũ vẫn giữ làm lịch sử. Các mục nghiệm thu và bảo vệ bên dưới vẫn còn áp dụng.
+
+
 ## Mốc hiện tại — 16/11/2026 (ưu tiên hơn phần lịch sử bên dưới)
 
 Ước lượng **85% phần phát triển**, **khoảng 80% mức sẵn sàng bảo vệ**; đây là đánh giá tiến độ theo bằng chứng, không phải dự báo điểm. Chưa có rubric môn học. Không tính upload/build/test mô phỏng là đã nghiệm thu phần cứng.

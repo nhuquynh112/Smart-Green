@@ -78,7 +78,7 @@ def install_session_routes(app, db, admin_auth):
     @app.get('/api/v1/web/devices/{device_id}/sessions')
     def list_sessions(device_id: str, _: str = Depends(admin_auth)):
         rows = db.all('SELECT * FROM collection_sessions WHERE device_id=?', (device_id,))
-        return sorted([unpack(r) for r in rows], key=lambda r: r['start'], reverse=True)
+        return sorted([unpack(r) for r in rows], key=lambda r: instant(r['start']), reverse=True)
 
     @app.put('/api/v1/web/devices/{device_id}/sessions/{session_id}')
     def save_session(device_id: str, session_id: str, body: dict, username: str = Depends(admin_auth)):

@@ -13,3 +13,13 @@ artifacts/session-w04-2026-11-14/*.csv whitespace=cr-at-eol
 artifacts/w04-20261114-reviewed.zip -text
 # Original handoff uses Markdown two-space hard breaks; preserve source bytes.
 artifacts/session-w04-2026-11-14/handoff.md whitespace=-blank-at-eol
+
+# Byte-exact research packages: checkout must not invalidate SHA256 manifests.
+artifacts/light-experiment-20261115/** -text
+artifacts/delta-experiment-20261116/** -text
+datasets/w05/** -text
+docs/evidence/delta-20261117/** -text
+# These source/report files are also covered by the delta evidence manifest.
+ai/smart_green_ai/delta_experiment.py -text
+ai/tests/test_delta_experiment.py -text
+docs/DELTA_AI_EVALUATION_2026-11-17.md -text
