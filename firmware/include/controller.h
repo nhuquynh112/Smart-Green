@@ -94,6 +94,13 @@ class Controller {
       persist();
     }
   }
+  // Runtime calls this before starting tasks: saved modes never arm a new boot.
+  bool disarmAfterBoot() {
+    if (output_) output_->off();
+    if (fault_) return false;
+    state_.mode=Mode::Off; dryCount_=0;
+    return persist(); // Keep quotas, command watermark and interrupted events.
+  }
   const State& state() const { return state_; }
   bool pumping() const { return pumping_; }
   bool fault() const { return fault_; }
@@ -125,7 +132,16 @@ class Controller {
     if (safeOff) {
       stop(ms, Reason::Stop);
       // A stale/duplicate STOP must also prevent AUTO from restarting on the next tick.
-      if(state_.mode!=Mode::Off){state_.mode=Mode::Off;dryCount_=0;if(!persist())return "storage_fault";}
+      const bool newCommand=c.seq>state_.lastCommand;
+      const bool validTime=utc>=1700000000 && c.issuedAt<=utc+5 && c.expiresAt>utc
+        && c.expiresAt>c.issuedAt && c.expiresAt-c.issuedAt<=60;
+      const bool changed=state_.mode!=Mode::Off || newCommand;
+      state_.mode=Mode::Off;dryCount_=0;
+      // Fence older queued starts even when STOP arrived after its expiry or
+      // while the clock was unavailable. This can only deny starts, never arm.
+      if(newCommand) state_.lastCommand=c.seq;
+      if(changed && !persist()) return "storage_fault";
+      return c.kind==Command::Kind::SetMode && newCommand && validTime ? "mode_set" : "stopped";
     }
     if (c.seq == 0 || c.seq <= state_.lastCommand) return safeOff?"stopped":"duplicate";
     if (utc < 1700000000 || c.issuedAt > utc+5 || c.expiresAt <= utc

@@ -23,6 +23,7 @@ AI_PACKAGE = ROOT / "ai"
 if str(AI_PACKAGE) not in sys.path:
     sys.path.insert(0, str(AI_PACKAGE))
 
+from backend.control_limits import manual_limits
 from backend.ai_service import make_recent_minute_dataframe, rebase_demo_window, run_prediction, STATIC_DEMO_BOOT_ID
 from backend.database import Database, canonical_json, hash_key, utc_iso
 
@@ -88,9 +89,14 @@ def _validate_telemetry(body: dict, path_device: str) -> tuple[str, int, datetim
         value = body.get(name)
         if type(value) is not int or value < 0 or (maximum is not None and value > maximum):
             raise HTTPException(422, detail=f"invalid {name}")
-    for name in ("cooldown_remaining_ms", "max_pulse_ms", "quota_limit_ms", "quota_limit_starts", "quota_reserved_ms", "quota_starts", "quota_window_ends_at"):
+    for name in ("cooldown_remaining_ms", "max_pulse_ms", "quota_limit_ms", "quota_limit_starts", "quota_reserved_ms", "quota_starts", "quota_window_ends_at", "auto_pulse_ms", "auto_cooldown_ms"):
         if name in body and (type(body[name]) is not int or not 0 <= body[name] <= 2**53-1):
             raise HTTPException(422, detail=f"invalid {name}")
+    for name in ("auto_low_pct", "auto_high_pct"):
+        if name in body and (type(body[name]) not in (int, float) or not math.isfinite(body[name]) or not 0 <= body[name] <= 100):
+            raise HTTPException(422, detail=f"invalid {name}")
+    if "auto_low_pct" in body and "auto_high_pct" in body and body["auto_low_pct"] >= body["auto_high_pct"]:
+        raise HTTPException(422, detail="invalid AUTO thresholds")
     if body.get("mode") not in MODES:
         raise HTTPException(422, detail="invalid mode")
     for name in ("soil_valid", "air_valid", "tank_ok", "pump_on"):
@@ -210,6 +216,8 @@ def create_app(db: Database | None = None, bundle: dict | None = None,
         database.ensure_device(device_id, key)
     model_bundle = bundle if bundle is not None else _load_bundle(model_path)
     app = FastAPI(title="Smart-Green API", version="1.0", redirect_slashes=False)
+    from backend.float_status import install, latest_status
+    install(app, database, _device_key)
     app.state.db = database
     app.state.ai_bundle = model_bundle
     app.state.ai_predictor = ai_predictor
@@ -487,9 +495,10 @@ def create_app(db: Database | None = None, bundle: dict | None = None,
             "flow_note": ("Theo lưu lượng đã cấu hình" if flow_configured
                           else "Chưa hiệu chuẩn lưu lượng; chưa quy đổi sang ml"),
         }
-        return {"device": device, "latest": latest, "history": rows, "commands": commands,
+        return {"device": device, "latest": latest, "float_status": latest_status(database,device_id,latest), "history": rows, "commands": commands,
                 "watering_events": events, "latest_ai": predictions[0] if predictions else None,
-                "ai_history": predictions, "model_evaluation": evaluation, "watering_stats": watering_stats}
+                "ai_history": predictions, "model_evaluation": evaluation, "watering_stats": watering_stats,
+                "control_limits": manual_limits(_unpack_json(latest.get("payload")) if latest else {})}
 
     @app.get("/api/v1/web/devices/{device_id}/export-csv")
     def web_export_csv(device_id: str):
@@ -559,7 +568,9 @@ def create_app(db: Database | None = None, bundle: dict | None = None,
             if kind == "WATER":
                 if type(duration) is not int or duration <= 0:
                     raise HTTPException(400, detail="duration_ms phải là số nguyên dương")
-                maximum = int(os.getenv("SG_MAX_PULSE_MS", os.getenv("SG_MAX_PUMP_MS", "1000")))
+                maximum = manual_limits()["manual_max_ms"]
+                if not maximum:
+                    raise HTTPException(503, detail="Giới hạn tưới chưa được cấu hình hợp lệ; tạm khóa tưới")
                 if duration > maximum:
                     raise HTTPException(400, detail=f"Thời gian tưới vượt giới hạn an toàn {maximum} ms")
                 latest = database.one_on(conn, "SELECT * FROM telemetry WHERE device_id=? ORDER BY received_at DESC LIMIT 1", (device_id,))
@@ -591,7 +602,7 @@ def create_app(db: Database | None = None, bundle: dict | None = None,
                 elapsed = max(0, (datetime.now(timezone.utc)-received).total_seconds()*1000)
                 if payload.get("cooldown_remaining_ms", 0) > elapsed:
                     raise HTTPException(409, detail="Thiết bị đang trong thời gian nghỉ")
-                if duration > payload.get("max_pulse_ms", maximum):
+                if duration > manual_limits(payload)["manual_max_ms"]:
                     raise HTTPException(400, detail="Thời lượng vượt giới hạn thực của ESP32")
                 if ((payload.get("quota_limit_starts", float("inf")) > 0 and payload.get("quota_starts", 0) >= payload.get("quota_limit_starts", float("inf")))
                         or duration + payload.get("quota_reserved_ms", 0) > payload.get("quota_limit_ms", float("inf"))):

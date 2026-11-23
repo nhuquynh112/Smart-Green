@@ -1,5 +1,19 @@
 # Việc còn lại của TV1
 
+## Cập nhật 23/11/2026
+
+Đã xuất/kiểm tra W06 (1.237 mẫu) và W07 (868 mẫu), giữ dữ liệu gốc và backup local; gói công bố tại datasets/w06 và datasets/w07. Thiếu giờ tưới chậu gần nhất trước phiên nên cửa sổ AI hợp lệ hiện bằng 0; không train hoặc đoán mốc tưới. W07 có sự cố/reset đầu phiên đã ghi nhật ký.
+
+Đã tách thông báo phao khỏi telemetry đất, giữ bảo vệ bơm; người dùng nạp/test và báo ổn ngày 23/11. 202 Python PASS, 8 SKIP, 8 subtests PASS; UI31 PASS; AUTO36 PASS; native/build đạt. Chưa đo định lượng độ trễ và chưa xác định nguyên nhân spike ADC. Xem [bàn giao phao](float-adc-20261123/SEPARATE_FLOAT_STATUS.md). Cần tiếp tục bổ sung nhật ký tưới để mở khóa AI và nghiệm thu phần cứng còn thiếu.
+
+## Cập nhật 21/11/2026
+
+Đã ghép bản vá UI/API sau khi người dùng xác nhận kết thúc W06: giới hạn MANUAL nhất quán, giải thích AUTO/cooldown, dữ liệu cũ, đồng bộ và cảnh báo biến động cảm biến. Không sửa dữ liệu phiên hoặc thuật toán bơm. 199 Python PASS, 8 SKIP, 8 subtests PASS; Dashboard 30 PASS; AUTO native 36 PASS; native firmware và build esp32dev đạt. Chưa restart backend/upload firmware. Xem [biên bản ghép bản vá](review-20261120-w06/README.md). Cần nghiệm thu runtime mới, các ca phần cứng chưa cô lập, hiệu chuẩn lưu lượng và AI live như danh sách dưới.
+
+## Cập nhật 20/11/2026
+
+Đã sửa luồng ACK/STOP, disarm runtime sau reboot và fence lệnh bật cũ. Chưa upload/nghiệm thu phần cứng. Kế hoạch test và phần AI live còn thiếu được mô tả trong [AUTO và nghiệm thu cuối](AUTO_FIXES_AND_ACCEPTANCE_2026-11-20.md). AI có API/Dashboard dự báo; AUTO vẫn là luật ngưỡng. Delta/light 30/60 mới đánh giá offline, chưa tích hợp adapter live và chưa được phép tự điều khiển. Các mục lịch sử bên dưới giữ làm mốc tham khảo.
+
 ## Bổ sung 17/11/2026
 
 - Hoàn tất thí nghiệm delta Ridge/HGB/RF với/không ánh sáng cho 30/60 phút; W05 không fit/tune trong thí nghiệm này. Xem [báo cáo delta](DELTA_AI_EVALUATION_2026-11-17.md). Không thay production: chưa thắng Persistence ổn định.

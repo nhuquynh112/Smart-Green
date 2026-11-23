@@ -1,0 +1,27 @@
+{
+  "production_commit": "da88dd91d99d655d6e4aea6d493e322d3b5124bf",
+  "hardware_access": false,
+  "files": {
+    "docs/AUTO_LOGIC_AUDIT_2026-11-20.md": "98a204add9abe50b8df772f399ef1522a024f1732721a2d02db6c54bb608f2ca",
+    "firmware/test/native/test_auto_audit.cpp": "9640bafebaec4fea3f1e1be6af48fd740f0758b415162033b6c965778fb978da",
+    "tools/test_auto_audit.sh": "d145283eafadfdbc9f07d9000180f16fa8de9432c46f2794b6717c32a5d6f1af",
+    "integration/test_auto_backend.py": "063c6dbed0a69ba54446a3f41d9f457473e3fdef8bce28b9da7e2a12140374dc",
+    "firmware/include/controller.h": "8f2082c937c6883fde66065c44642217313ce08ba604fd28dbb245b755c09b87",
+    "firmware/include/pump_guard.h": "32df3468cf87992fd9b80f6645ea5f53f6cf99218512bab74b8488eeb2749e95",
+    "firmware/include/protocol.h": "0837fcd8857d4e2cdc7644623a9c6daba2c90a829e2b8e08e37b1b88a0a399a7",
+    "firmware/include/network_worker.h": "e5cc4f948904b8023e65f5ca852dd9063fb468093feafa5b57b4bc5e40ff1304",
+    "firmware/include/hardware.h": "ad29732dfe1997b864b5cca07961fd970f4e13fdfb3a0db1dcdc8bd3374fa1fa",
+    "firmware/include/runtime_config.h": "40f6cedb33e13f8b1d3df8ee52cc347762331d5b1eb8475af24d8bb1b5d1e990",
+    "firmware/src/main.cpp": "4c1a4ac6f3dd2db6a43a4051139ad5925ef2c1edd4ec61675e4ed4927b53c88e",
+    "firmware/test/native/runtime_bridge.cpp": "95bd6a87bf505c5e27f5f3c87777e5b26fbf1dae8e94099a9fecf4c4db01c543",
+    "backend/app.py": "1838b0c8a360af31b2b28ec80e13c9adcd3af44fa6759541ff90aa4d5ed3b85b",
+    "backend/database.py": "fd5ae252957728761bf2139cefba5d84053535227526e3612189d358277ce2b3",
+    "backend/static/index.html": "515e2fe95f6febf4a8d9e251e7ce8c98995167daf6a34d0d19d716c18daa8d70",
+    "integration/test_http_runtime.py": "124a22ad2280989cfbc015aa201478fc8d1cc4efe43656526ca4bf5150681e4e",
+    "docs/auto-audit-20261120/dashboard-results.txt": "e757ae3f374c7db6044042d7d172bd202d5190f0bc5333c8d68c48bb2d438d5c",
+    "docs/auto-audit-20261120/pytest-results.txt": "ed62a515de625a445fdae90e441f24bb73d84a42fd93fd467bd26604c624b939",
+    "docs/auto-audit-20261120/native-results.txt": "cc514d3f4f0e66c9873d709d39f1d4e110c1a46bdb945829ff82c690589ba7ad",
+    "docs/auto-audit-20261120/firmware-results.txt": "b7781bf4751f15e2a00a56affcba6e67b45329ca0ff06bceb081d5d0f5658a08",
+    "docs/auto-audit-20261120/pytest-results.xml": "d38e4874ba4eea768142f217c7043f372d64bc789e19364185c6741cf79fdb4f"
+  }
+}

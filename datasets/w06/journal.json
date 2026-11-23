@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "device_id": "garden-01",
+  "calibration_id": "soil-2511-979",
+  "data_origin": "real",
+  "coverage_start": "2026-11-20T07:53:22+00:00",
+  "coverage_end": "2026-11-20T18:11:59+00:00",
+  "history_complete": true,
+  "last_watered_at_before_start": null,
+  "events": [],
+  "unknown_intervals": [],
+  "notes": [
+    ""
+  ],
+  "observations": []
+}

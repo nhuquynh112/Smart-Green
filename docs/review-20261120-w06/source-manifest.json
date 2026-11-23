@@ -1,0 +1,30 @@
+{
+  "deployment": "NOT_APPLIED_W06_ACTIVE",
+  "files": {
+    "backend/app.py": {
+      "before": "1838b0c8a360af31b2b28ec80e13c9adcd3af44fa6759541ff90aa4d5ed3b85b",
+      "after": "651ca7452aca5743b3f6319e472544832ded7e92e7ea3708320d6b3d62c3e8ac"
+    },
+    "backend/control_limits.py": {
+      "before": null,
+      "after": "473dd16737c852ea6f1ae00de725a84aeb4ab2e80200727a1e3391efdb63d42f"
+    },
+    "backend/static/index.html": {
+      "before": "515e2fe95f6febf4a8d9e251e7ce8c98995167daf6a34d0d19d716c18daa8d70",
+      "after": "cd72868810469dcbf871db964b1ccbcb8004d69c766aa89e4fd0aff7121f7ac3"
+    },
+    "backend/tests/test_control_limits.py": {
+      "before": null,
+      "after": "443aeaa5300b52c7de78e81050ea57e66993df087feeb93d03e87d4039f0b56f"
+    },
+    "backend/tests/dashboard_controls.test.cjs": {
+      "before": "31db4329801f47856a450849015bcb0b14a9016a2124de6dfe93c0caa6c28400",
+      "after": "7797da3090dacad046a13a0bca16d3eed942271ebe7e77893c155c55fce4fd6c"
+    },
+    "firmware/src/main.cpp": {
+      "before": "dc74e7c482db4a05c9d336af68eb7253b36595121001c87004ae80f7c91f1e56",
+      "after": "b45fb9a4e74ff0d85a793bbe067bd70be48d2b6fccd263d043fa3ba1a89fc564"
+    }
+  },
+  "patch_sha256": "e56840db047cf3430737c57e41dd3ab40dda0ee94a61a154f00d9785d6b37443"
+}

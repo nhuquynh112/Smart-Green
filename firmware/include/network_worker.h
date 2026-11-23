@@ -8,14 +8,16 @@
 #include <atomic>
 #include "runtime_config.h"
 #include "protocol.h"
+#include "command_delivery.h"
 
 namespace net {
 struct JsonPacket {char body[2048]{};};
+struct FloatPacket {char body[192]{};};
 struct Ack {uint32_t seq=0;char result[64]{};};
 struct EventPacket {uint32_t id=0;JsonPacket json;};
 struct Inbound {garden::Command command;char rejection[64]{};};
 struct Channels {
-  QueueHandle_t telemetry,commands,acks,events,eventAcks;
+  QueueHandle_t floatStatus,telemetry,commands,acks,events,eventAcks,safetyCommands,safetyAcks;
 };
 // Accessed across tasks without sharing controller or ArduinoJson documents.
 extern std::atomic<bool> clockReady;
@@ -70,8 +72,10 @@ inline void task(void* argument) {
   Channels& q=*static_cast<Channels*>(argument);
   WiFi.mode(WIFI_STA);WiFi.setAutoReconnect(true);
   sntp_set_time_sync_notification_cb(syncCallback);configTime(0,0,"pool.ntp.org","time.google.com");
-  Ack ack;bool pendingAck=false,waitingCore=false;
+  Ack ack,safetyAck;
+  garden::CommandDelivery delivery;
   JsonPacket telemetry;bool pendingTelemetry=false;
+  FloatPacket floatPacket;bool pendingFloat=false;
   uint32_t lastReconnect=millis()-15000;
   String root=String("/api/v1/devices/")+SG_DEVICE_ID;
   for(;;) {
@@ -80,14 +84,21 @@ inline void task(void* argument) {
       vTaskDelay(pdMS_TO_TICKS(200));continue;
     }
     String response;
-    if(!pendingAck && xQueueReceive(q.acks,&ack,0)==pdTRUE) {pendingAck=true;waitingCore=false;}
-    if(pendingAck) {
+    if(!delivery.safetyPending && xQueueReceive(q.safetyAcks,&safetyAck,0)==pdTRUE) delivery.receivedAck(true);
+    if(delivery.safetyPending) {
+      JsonDocument j;j["schema_version"]=1;j["device_id"]=SG_DEVICE_ID;j["command_seq"]=safetyAck.seq;j["result"]=safetyAck.result;
+      String body;serializeJson(j,body);
+      int code=request(root+"/commands/"+safetyAck.seq+"/ack",body.c_str(),response);
+      delivery.ackResult(true,code);
+    }
+    if(!delivery.normalPending && xQueueReceive(q.acks,&ack,0)==pdTRUE) delivery.receivedAck(false);
+    if(delivery.normalPending) {
       JsonDocument j;j["schema_version"]=1;j["device_id"]=SG_DEVICE_ID;j["command_seq"]=ack.seq;j["result"]=ack.result;
       String body;serializeJson(j,body);
       int code=request(root+"/commands/"+ack.seq+"/ack",body.c_str(),response);
-      if(code>=200 && code<300) pendingAck=false;
+      delivery.ackResult(false,code);
     }
-    if(!runtime::telemetryOnly && !pendingAck && !waitingCore) {
+    if(!runtime::telemetryOnly && delivery.shouldPoll()) {
       // Ask oldest unacknowledged command, including an already executed seq after a reboot.
       // Core's persisted sequence prevents replay. Backend must ACK even a rejected command.
       int code=request(root+"/commands/next?after_seq=0",nullptr,response);
@@ -100,7 +111,12 @@ inline void task(void* argument) {
           if(identifiable) {
             in.command.seq=j["command_seq"].as<uint32_t>();
             if(error) snprintf(in.rejection,sizeof(in.rejection),"invalid_%s",error);
-            if(xQueueSend(q.commands,&in,0)==pdTRUE) waitingCore=true;
+            const bool safe=!error && garden::isSafetyCommand(in.command);
+            // ACK failure may block new starts, but never polling for STOP/OFF.
+            if(delivery.canDispatch(safe)) {
+              QueueHandle_t destination=safe?q.safetyCommands:q.commands;
+              if(xQueueSend(destination,&in,0)==pdTRUE) delivery.dispatched(safe);
+            }
           }
         }
       }
@@ -120,6 +136,17 @@ inline void task(void* argument) {
       telemetryStatus.store(code);
       if(code>=200 && code<300) {pendingTelemetry=false;telemetrySent.fetch_add(1);}
       else telemetryFailures.fetch_add(1);
+    }
+    // Latest-state queue: never convert a float edge into a soil sample.
+    if(xQueueReceive(q.floatStatus,&floatPacket,0)==pdTRUE) pendingFloat=true;
+    if(pendingFloat) {
+      JsonDocument captured;deserializeJson(captured,floatPacket.body);
+      const int64_t observed=captured["observed_at"].as<int64_t>();
+      if(utc()<observed || utc()-observed>60) pendingFloat=false;
+    }
+    if(pendingFloat) {
+      int code=request(root+"/float-status",floatPacket.body,response);
+      if((code>=200 && code<300) || (code>=400 && code<500 && code!=409 && code!=429)) pendingFloat=false;
     }
     vTaskDelay(pdMS_TO_TICKS(runtime::pollMs));
   }

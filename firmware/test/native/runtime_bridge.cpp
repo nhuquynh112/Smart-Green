@@ -13,6 +13,7 @@ struct Store : Storage {
 int main() {
   Store store;Config cfg;cfg.commissioned=true;cfg.cooldownMs=1000;cfg.pulseMs=1000;cfg.maxPulseMs=3000;
   std::unique_ptr<Controller> core(new Controller(cfg,store.saved,store,0));
+  core->disarmAfterBoot();
   std::string line;
   while(std::getline(std::cin,line)) {
     JsonDocument request,response;
@@ -25,7 +26,7 @@ int main() {
       Command command;const char* error=protocol::parse(request["payload"],"garden-01",cfg.maxPulseMs,command);
       response["result"]=error?error:core->command(command,ms,utc,sensor);
     } else if(op=="reboot") {
-      core.reset(new Controller(cfg,store.saved,store,ms));response["result"]="rebooted_simulated_storage";
+      core.reset(new Controller(cfg,store.saved,store,ms));core->disarmAfterBoot();response["result"]="rebooted_simulated_storage";
     } else if(op=="ack_event") response["acknowledged"]=core->acknowledgeEvent(request["event_id"].as<uint32_t>());
     else if(op=="storage_fail") store.ok=false;
     else if(op=="tick") core->tick(ms,utc,sensor);

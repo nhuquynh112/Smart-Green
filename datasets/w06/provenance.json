@@ -1,0 +1,9 @@
+{
+  "source": "local PostgreSQL, configured DATABASE_URL (credentials not exported)",
+  "isolation": "REPEATABLE READ READ ONLY",
+  "selection": "device garden-01, real, received_at >= session.start and < session.end",
+  "date": "2026-11-21",
+  "raw_modified": false,
+  "trained": false,
+  "can_trigger_pump": false
+}

@@ -9,6 +9,7 @@
 #include "hardware.h"
 #include "network_worker.h"
 #include "telemetry_time.h"
+#include "float_telemetry.h"
 
 std::atomic<bool> net::clockReady{false};
 std::atomic<bool> net::contacted{false};
@@ -24,6 +25,7 @@ net::Channels channels{};
 QueueHandle_t readings=nullptr;
 garden::Controller* controller=nullptr;
 hardware::Reading reading;
+FloatTelemetry floatTelemetry;
 bool runtimeReady=false,clockFault=false,commissioned=false;
 char bootId[20];
 uint32_t lastTelemetry=0,lastSerial=0,sequence=0,dropped=0;
@@ -59,6 +61,9 @@ void publish(uint32_t now) {
   j["quota_scope"]=manual?"MANUAL":"AUTO";
   j["quota_policy"]="separate-v2";
   j["max_pulse_ms"]=limits.maxPulseMs;
+  // Observability only: the controller remains the sole decision maker.
+  j["auto_pulse_ms"]=limits.pulseMs;j["auto_cooldown_ms"]=limits.cooldownMs;
+  j["auto_low_pct"]=limits.low;j["auto_high_pct"]=limits.high;
   j["quota_limit_ms"]=limits.maxDayMs;j["quota_limit_starts"]=(controller->mode()==garden::Mode::Manual && limits.manualUnlimitedStarts)?0:limits.maxDayStarts; // zero: no count limit
   j["quota_reserved_ms"]=quotaExpired?0:(manual?state.manualReservedMs:state.reservedMs);
   j["quota_starts"]=quotaExpired?0:(manual?state.manualStarts:state.starts);
@@ -102,8 +107,8 @@ void printLive(uint32_t now) {
   Serial.print(" temp=");
   if(air) {Serial.print(reading.temperature,1);Serial.print("C humidity=");Serial.print(reading.humidity,1);Serial.print("%");}
   else Serial.print("invalid humidity=invalid");
-  Serial.printf(" light_raw=%d tank=%s pump=%s wifi=%s clock=%s http=%d\n",
-    reading.lightRaw,reading.soil.tankOK?"OK":"LOW",pump.running()?"ON":"OFF",
+  Serial.printf(" soil_raw=%d light_raw=%d tank=%s pump=%s wifi=%s clock=%s http=%d\n",
+    reading.soilRaw,reading.lightRaw,reading.soil.tankOK?"OK":"LOW",pump.running()?"ON":"OFF",
     WiFi.status()==WL_CONNECTED?"OK":"WAIT",net::clockReady.load()&&!clockFault?"OK":"WAIT",
     net::telemetryStatus.load());
 }
@@ -135,10 +140,14 @@ void setup() {
   cfg.commissioned=cfg.commissioned && sensors::calibrated(SG_DRY_RAW,SG_WET_RAW) && outputReady;
   commissioned=cfg.commissioned && cfg.valid();
   controller=new garden::Controller(cfg,state,storage,millis(),&pump);
+  controller->disarmAfterBoot();
+  channels.floatStatus=xQueueCreate(1,sizeof(net::FloatPacket));
   channels.telemetry=xQueueCreate(1,sizeof(net::JsonPacket));channels.commands=xQueueCreate(1,sizeof(net::Inbound));
   channels.acks=xQueueCreate(1,sizeof(net::Ack));channels.events=xQueueCreate(1,sizeof(net::EventPacket));
+  channels.safetyCommands=xQueueCreate(1,sizeof(net::Inbound));
+  channels.safetyAcks=xQueueCreate(1,sizeof(net::Ack));
   channels.eventAcks=xQueueCreate(1,sizeof(uint32_t));readings=xQueueCreate(1,sizeof(hardware::Reading));
-  if(!channels.telemetry || !channels.commands || !channels.acks || !channels.events || !channels.eventAcks || !readings || !outputReady) {
+  if(!channels.floatStatus || !channels.telemetry || !channels.commands || !channels.acks || !channels.events || !channels.eventAcks || !channels.safetyCommands || !channels.safetyAcks || !readings || !outputReady) {
     controller->emergencyStop(millis());Serial.println("# runtime init failure; output locked");return;
   }
   if(xTaskCreatePinnedToCore(sensorTask,"sensors",4096,nullptr,1,nullptr,1)!=pdPASS
@@ -154,6 +163,7 @@ void loop() {
   uint32_t now=millis();pump.heartbeat();
   xQueueReceive(readings,&reading,0);
   reading.soil.tankOK=digitalRead(runtime::floatPin)==LOW;
+  floatTelemetry.observe(reading.soil.tankOK,now);
   int64_t utc=net::utc();
   static int64_t lastUtc=0;static uint32_t clockMs=0;
   if(utc>=1700000000) {
@@ -167,7 +177,14 @@ void loop() {
   uint32_t stopped;garden::Reason why;
   if(pump.takeTrip(stopped,why)) controller->externalStop(stopped,why);
   net::Inbound in;
-  if(uxQueueSpacesAvailable(channels.acks) && xQueueReceive(channels.commands,&in,0)==pdTRUE) {
+  bool safetyHandled=false;
+  if(uxQueueSpacesAvailable(channels.safetyAcks) && xQueueReceive(channels.safetyCommands,&in,0)==pdTRUE) {
+    const char* result=controller->command(in.command,now,utc,reading.soil);
+    net::Ack ack;ack.seq=in.command.seq;snprintf(ack.result,sizeof(ack.result),"%s",result);
+    xQueueSend(channels.safetyAcks,&ack,0);
+    safetyHandled=true;
+  }
+  if(!safetyHandled && uxQueueSpacesAvailable(channels.acks) && xQueueReceive(channels.commands,&in,0)==pdTRUE) {
     const char* result;
     if(in.rejection[0]) result=in.rejection;
     else if(in.command.kind==garden::Command::Kind::Water && in.command.source==garden::Source::AI && !SG_AI_COMMANDS_ENABLED) result="ai_disabled";
@@ -188,7 +205,20 @@ void loop() {
   // Report command outcomes and pump transitions without waiting for the sensor interval.
   const bool controlChanged=previousMode!=controller->mode() || previousPump!=controller->pumping()
       || previousCommand!=controller->state().lastCommand;
-  if(reading.soil.sampledMs && (controlChanged || !sequence || uint32_t(now-lastTelemetry)>=runtime::telemetryMs)) {lastTelemetry=now;publish(now);}
+  const bool periodicDue=!sequence || uint32_t(now-lastTelemetry)>=runtime::telemetryMs;
+  if(reading.soil.sampledMs && (controlChanged || periodicDue)) {
+    // Extra notifications must not postpone the regular sensor cadence.
+    if(periodicDue) lastTelemetry=now;
+    publish(now);
+    floatTelemetry.sent(reading.soil.tankOK,now);
+  }
+  if(reading.soil.sampledMs && !clockFault && net::utc()>=1700000000 && floatTelemetry.due(now)) {
+    net::FloatPacket packet;JsonDocument status;
+    status["observed_at"]=net::utc();status["boot_id"]=bootId;status["uptime_ms"]=now;status["tank_ok"]=reading.soil.tankOK;
+    serializeJson(status,packet.body,sizeof(packet.body));
+    xQueueOverwrite(channels.floatStatus,&packet);
+    floatTelemetry.sent(reading.soil.tankOK,now);
+  }
   if(reading.soil.sampledMs && uint32_t(now-lastSerial)>=runtime::serialMs) {lastSerial=now;printLive(now);}
   delay(5);
 }

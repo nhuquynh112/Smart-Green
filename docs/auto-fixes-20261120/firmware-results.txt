@@ -1,0 +1,5 @@
+controller: all assertions passed
+safety boundaries: 6 scenario groups passed (host simulation only)
+runtime: sensor, protocol, physical output ordering and offline safety passed
+profiles: telemetry-only and control pump-lock assertions passed
+telemetry: timestamp key, UTC text and clock invalidation passed

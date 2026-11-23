@@ -87,7 +87,7 @@ class SyncASGIClient:
             json={**json,'request_id':uuid.uuid4().hex,'expected_seq':watermark}
         if "/web/" not in path:
             values["x_api_key"] = (headers or {}).get("X-API-Key")
-        if parts[-1] == "telemetry" or parts[-1] == "events":
+        if parts[-1] in ("telemetry", "events", "float-status"):
             values["body"] = json
         elif len(parts) >= 3 and parts[-1] == "ack":
             values["seq"] = int(parts[-2])

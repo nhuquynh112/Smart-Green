@@ -1,0 +1,39 @@
+✔ polling preserves an edited mode and OFF blocks WATER (84.774727ms)
+✔ one in-flight command, ACK rejection remains visible after polling (13.28152ms)
+✔ expired command reports expiry rather than success (7.63601ms)
+✔ cooldown telemetry locks watering, then expires without another click (5.459877ms)
+✔ a newer mode ACK updates controls without waiting for periodic telemetry (7.672311ms)
+✔ quota blocks watering and displays the actual firmware limit (3.526754ms)
+✔ OFF does not show the automatic cooldown as a manual watering wait (3.498486ms)
+✔ chart preserves elapsed time and breaks missing-data intervals (3.675293ms)
+✔ device and command strings render as text instead of HTML (6.677254ms)
+✔ chart excludes overnight history and retains a single current sample (5.278987ms)
+✔ zero count limit permits manual starts but still enforces time budget (4.20087ms)
+✔ failed refresh locks WATER and clears only its notice on recovery (6.576038ms)
+✔ changing device cannot send WATER using the previous device readiness (5.168219ms)
+✔ hung refresh times out, locks WATER, and polling recovers (8.806516ms)
+✔ lost POST response reconciles the exact persisted request identity (8.090367ms)
+✔ late WATER response cannot replace newer STOP tracking (8.541138ms)
+✔ uncertain WATER ignores unrelated commands and still permits STOP (7.870412ms)
+✔ reload and another tab retain pending identity without a second POST (10.191691ms)
+✔ a STOP resolved in another tab clears the original tab uncertainty (5.671025ms)
+✔ mode-specific UI and actual AI model metadata (4.147196ms)
+✔ automatic session retries keep identity and finishing protects unsaved notes (6.098133ms)
+✔ light chart uses ADC, breaks gaps and suppresses stale or saturated trends (4.888904ms)
+✔ dashboard HTML element IDs are unique (1.462291ms)
+✔ offline chart and source-aware evaluation caption (4.712418ms)
+✔ manual UI uses lower backend cap and rejects direct oversized submission (5.522258ms)
+✔ missing limits fail closed and changing devices resets maximum (3.592384ms)
+✔ AUTO explains known tank cooldown and insufficient pulse budget without inventing thresholds (4.260141ms)
+✔ pending event alone means syncing rather than failure (3.69681ms)
+✔ soil jumps are advisory and null is not converted to zero (5.671088ms)
+✔ offline OFF is historical, not a claim that physical output is off (5.09005ms)
+✔ float notification updates only float card with independent freshness and boot identity (9.382225ms)
+ℹ tests 31
+ℹ suites 0
+ℹ pass 31
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 295.2509

@@ -1,0 +1,170 @@
+{
+  "rows": 868,
+  "duration_seconds": 26773.0,
+  "revision": 5,
+  "history_complete": true,
+  "last_watered_at_before_start": null,
+  "duplicates": 0,
+  "boots": {
+    "e9144e9ebc3d55c8": 868
+  },
+  "calibrations": {
+    "soil-2511-979": 868
+  },
+  "received_at": {
+    "first": "2026-11-21 05:09:54.572323+00:00",
+    "last": "2026-11-21 12:23:23.864539+00:00",
+    "span_seconds": 26009.292216,
+    "null": 0,
+    "duplicate_nonnull": 0,
+    "backwards": 0,
+    "interval_min": 21.342625,
+    "interval_median": 30.002388,
+    "interval_max": 36.817366,
+    "gaps_over90": []
+  },
+  "measured_at": {
+    "first": "2026-11-21 05:10:20+00:00",
+    "last": "2026-11-21 12:23:22+00:00",
+    "span_seconds": 25982.0,
+    "null": 1,
+    "duplicate_nonnull": 0,
+    "backwards": 0,
+    "interval_min": 29.0,
+    "interval_median": 30.0,
+    "interval_max": 31.0,
+    "gaps_over90": []
+  },
+  "sensors": {
+    "soil_pct": {
+      "min": 18.40731,
+      "max": 23.30287,
+      "mean": 21.728696774193548,
+      "missing": 0,
+      "out_of_range": 0,
+      "saturated4095": 0
+    },
+    "soil_raw": {
+      "min": 2154.0,
+      "max": 2229.0,
+      "mean": 2178.1163594470045,
+      "missing": 0,
+      "out_of_range": 0,
+      "saturated4095": 0
+    },
+    "temperature_c": {
+      "min": 32.4,
+      "max": 33.2,
+      "mean": 32.81900921658986,
+      "missing": 0,
+      "out_of_range": 0,
+      "saturated4095": 0
+    },
+    "humidity_pct": {
+      "min": 58.2,
+      "max": 66.5,
+      "mean": 64.11889400921659,
+      "missing": 0,
+      "out_of_range": 0,
+      "saturated4095": 0
+    },
+    "light_raw": {
+      "min": 639.0,
+      "max": 4095.0,
+      "mean": 3205.6048387096776,
+      "missing": 0,
+      "out_of_range": 0,
+      "saturated4095": 75
+    }
+  },
+  "flags": {
+    "soil_valid": {
+      "true": 868
+    },
+    "air_valid": {
+      "true": 868
+    },
+    "pump_running": {
+      "false": 868
+    },
+    "mode": {
+      "OFF": 868
+    },
+    "clock_ready": {
+      "true": 867,
+      "false": 1
+    },
+    "clock_fault": {
+      "false": 868
+    },
+    "storage_fault": {
+      "false": 868
+    },
+    "queued_events": {
+      "0": 868
+    },
+    "telemetry_overwrites": {
+      "0": 868
+    }
+  },
+  "sequence_gaps": {
+    "e9144e9ebc3d55c8": 0
+  },
+  "watering_events_in_session": [],
+  "commands_in_session": 0,
+  "minute_quality": {
+    "input_rows": 868,
+    "rows_without_selected_time": 1,
+    "output_minutes": 433,
+    "excluded_minutes": 433,
+    "exclusions": {
+      "unknown_previous_watering": 433
+    },
+    "time_basis": "device_timestamp",
+    "as_of": "2026-11-21T12:23:36+00:00",
+    "time_proxy": false,
+    "data_origin": "real",
+    "feature_version": "v2-watering-events",
+    "automatic_irrigation_approved": false,
+    "note": "Closed-minute aggregates. Proxy timestamps remain labelled; no pump duration inferred from hand watering."
+  },
+  "windows": {
+    "30": {
+      "input_rows": 433,
+      "grid_minutes": 433,
+      "usable_windows": 0,
+      "missing_minutes": 0,
+      "watering_counter_increments": 0,
+      "device_id": "garden-01",
+      "calibration_id": "soil-2511-979",
+      "data_origin": "real",
+      "time_basis": "device_timestamp",
+      "scope": "Only complete dry history and futures with no additional watering",
+      "v2_windows": 0,
+      "common_windows": 0,
+      "excluded_for_light": 0,
+      "exclude_saturated": false
+    },
+    "60": {
+      "input_rows": 433,
+      "grid_minutes": 433,
+      "usable_windows": 0,
+      "missing_minutes": 0,
+      "watering_counter_increments": 0,
+      "device_id": "garden-01",
+      "calibration_id": "soil-2511-979",
+      "data_origin": "real",
+      "time_basis": "device_timestamp",
+      "scope": "Only complete dry history and futures with no additional watering",
+      "v2_windows": 0,
+      "common_windows": 0,
+      "excluded_for_light": 0,
+      "exclude_saturated": false
+    }
+  },
+  "sensor_only_candidates_NOT_AI_ELIGIBLE": {
+    "30": 388,
+    "60": 358
+  },
+  "invalid_soil_rows": []
+}

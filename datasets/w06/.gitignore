@@ -1,0 +1,9 @@
+# Full database snapshots remain in local backup ZIPs.
+database-rows.jsonl
+session-record.json
+session-revisions.json
+watering-events.json
+commands.json
+active-sessions.json
+latest-telemetry.json
+manifest-local.json

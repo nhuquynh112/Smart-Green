@@ -8,7 +8,7 @@ function setup(sharedStorage=new Map(),sessionHandler=null){
   let posts=0, finishPost, chart, lightChart, getError=false, hangGet=false;
   const requests=[],timers=new Map();let timerId=0;
   function Chart(element,config){Object.assign(this,config);this.update=()=>{};if(element===el('historyChart'))chart=this;else lightChart=this;}
-  const data={device:{device_id:'garden',connected:true,last_seen_at:new Date().toISOString()},latest:{mode:'OFF',water_ok:true,soil_valid:true,clock_ready:true,commissioned:true,received_at:new Date().toISOString(),measured_at:new Date().toISOString()},commands:[]};
+  const data={control_limits:{manual_max_ms:1000},device:{device_id:'garden',connected:true,last_seen_at:new Date().toISOString()},latest:{mode:'OFF',water_ok:true,soil_valid:true,clock_ready:true,commissioned:true,received_at:new Date().toISOString(),measured_at:new Date().toISOString()},commands:[]};
   const context={Uint8Array,crypto:require('node:crypto').webcrypto,localStorage:{getItem:k=>sharedStorage.get(k)||null,setItem:(k,v)=>sharedStorage.set(k,v),removeItem:k=>sharedStorage.delete(k)},document:{getElementById:el,activeElement:null},window:{Chart},Chart,sessionStorage:{getItem:()=> 'test',setItem(){},removeItem(){}},Date,Number,Math,JSON,encodeURIComponent,AbortController,setTimeout(fn){timers.set(++timerId,fn);return timerId;},clearTimeout(id){timers.delete(id);},setInterval(){},fetch:async(url,options)=>{
     if(url.includes('/sessions')&&sessionHandler)return sessionHandler(url,options);
     if(options.method==='POST'){posts++;const seq=posts;await new Promise((resolve,reject)=>{finishPost=resolve;requests.push({resolve,reject,body:JSON.parse(options.body)});options.signal.addEventListener('abort',()=>reject(new Error('aborted')));});return {ok:true,status:201,json:async()=>({command_seq:seq})};}
@@ -244,4 +244,58 @@ test('offline chart and source-aware evaluation caption',()=>{
   s.api.render(s.data);
   assert.match(s.el('evaluationScope').textContent,origin==='real'?/thực nghiệm/:origin==='synthetic'?/giả lập/:/Chưa có/);
  }
+});
+
+
+test('manual UI uses lower backend cap and rejects direct oversized submission',async()=>{
+ const s=setup();s.data.latest.mode='MANUAL';s.data.latest.payload={max_pulse_ms:3000};s.api.render(s.data);
+ assert.equal(s.el('waterSeconds').max,1);assert.match(s.el('manualLimit').textContent,/0,1–1/);
+ s.el('waterSeconds').value='3';s.el('waterSeconds').oninput();assert.equal(s.el('waterBtn').disabled,true);
+ await s.api.createCommand({kind:'WATER',duration_ms:3000});assert.equal(s.posts(),0);
+ assert.match(s.el('notice').textContent,/tối đa hiện tại là 1/);
+ s.data.latest.payload.max_pulse_ms=300;s.api.render(s.data);assert.equal(s.el('waterSeconds').max,0.3);
+});
+test('missing limits fail closed and changing devices resets maximum',()=>{
+ const s=setup();s.data.latest.mode='MANUAL';delete s.data.control_limits;s.api.render(s.data);
+ assert.equal(s.el('waterBtn').disabled,true);assert.equal(s.el('waterSeconds').max,0);
+ s.data.control_limits={manual_max_ms:1000};s.api.render(s.data);assert.equal(s.el('waterBtn').disabled,false);
+});
+test('AUTO explains known tank cooldown and insufficient pulse budget without inventing thresholds',()=>{
+ const s=setup();s.data.latest.mode='AUTO';s.data.latest.water_ok=false;
+ s.data.latest.payload={cooldown_remaining_ms:300000,quota_scope:'AUTO',quota_limit_ms:20000,quota_reserved_ms:18000,auto_pulse_ms:3000};
+ s.api.render(s.data);const msg=s.el('modeGuidance').textContent;
+ assert.match(msg,/phao/);assert.match(msg,/đang nghỉ/);assert.match(msg,/không đủ xung 3/);assert.match(msg,/chưa báo đủ/);
+ s.data.latest.received_at=new Date(Date.now()-180000).toISOString();s.api.render(s.data);
+ assert.match(s.el('modeGuidance').textContent,/Chưa có mẫu mới/);assert.doesNotMatch(s.el('modeGuidance').textContent,/đang nghỉ/);
+});
+test('pending event alone means syncing rather than failure',()=>{
+ const s=setup();Object.assign(s.data.latest,{queued_events:1,storage_fault:false,clock_fault:false});s.api.render(s.data);
+ assert.equal(s.el('syncStatus').textContent,'Đang đồng bộ');assert.doesNotMatch(s.el('syncStatus').className,/bad/);
+ s.data.latest.storage_fault=true;s.api.render(s.data);assert.equal(s.el('syncStatus').textContent,'Cần kiểm tra');
+});
+test('soil jumps are advisory and null is not converted to zero',()=>{
+ const s=setup();const now=Date.now();s.data.history=[{boot_id:'b',calibration_id:'c',soil_valid:true,soil_pct:0,measured_at:new Date(now-30000).toISOString()},{boot_id:'b',calibration_id:'c',soil_valid:true,soil_pct:55,measured_at:new Date(now).toISOString()}];
+ s.api.render(s.data);assert.match(s.el('soilObservation').textContent,/đổi nhanh/);
+ s.data.history[0].soil_pct=null;s.api.render(s.data);assert.equal(s.el('soilObservation').textContent,'');
+});
+
+test('offline OFF is historical, not a claim that physical output is off',()=>{
+ const s=setup();s.data.device.connected=false;s.api.render(s.data);
+ assert.match(s.el('modeGuidance').textContent,/không xác nhận trạng thái bơm/);
+ assert.match(s.el('tankStatus').innerHTML,/đã cũ/);
+});
+
+test('float notification updates only float card with independent freshness and boot identity',()=>{
+ const s=setup();s.data.latest.boot_id='b';s.data.latest.uptime_ms=100;
+ s.data.latest.received_at=new Date(Date.now()-180000).toISOString();
+ s.data.latest.measured_at=s.data.latest.received_at;
+ s.data.float_status={boot_id:'b',uptime_ms:101,tank_ok:false,observed_at:new Date().toISOString()};
+ s.api.render(s.data);assert.equal(s.el('tankValue').textContent,'Cảnh báo hết nước');
+ assert.match(s.el('tankStatus').innerHTML,/Kiểm tra bình nước/);
+ assert.match(s.el('soilStatus').innerHTML,/Chưa có mẫu mới/);
+ s.data.float_status.observed_at=new Date(Date.now()-180000).toISOString();s.api.render(s.data);
+ assert.match(s.el('tankStatus').innerHTML,/đã cũ/);
+ s.data.float_status.boot_id='old';s.data.float_status.observed_at=new Date().toISOString();s.api.render(s.data);
+ assert.equal(s.el('tankValue').textContent,'Đủ nước');
+ assert.match(s.el('tankStatus').innerHTML,/đã cũ/);
 });

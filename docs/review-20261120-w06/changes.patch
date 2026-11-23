@@ -1,0 +1,346 @@
+--- a/backend/app.py
++++ b/backend/app.py
+@@ -23,6 +23,7 @@
+ if str(AI_PACKAGE) not in sys.path:
+     sys.path.insert(0, str(AI_PACKAGE))
+ 
++from backend.control_limits import manual_limits
+ from backend.ai_service import make_recent_minute_dataframe, rebase_demo_window, run_prediction, STATIC_DEMO_BOOT_ID
+ from backend.database import Database, canonical_json, hash_key, utc_iso
+ 
+@@ -88,9 +89,14 @@
+         value = body.get(name)
+         if type(value) is not int or value < 0 or (maximum is not None and value > maximum):
+             raise HTTPException(422, detail=f"invalid {name}")
+-    for name in ("cooldown_remaining_ms", "max_pulse_ms", "quota_limit_ms", "quota_limit_starts", "quota_reserved_ms", "quota_starts", "quota_window_ends_at"):
++    for name in ("cooldown_remaining_ms", "max_pulse_ms", "quota_limit_ms", "quota_limit_starts", "quota_reserved_ms", "quota_starts", "quota_window_ends_at", "auto_pulse_ms", "auto_cooldown_ms"):
+         if name in body and (type(body[name]) is not int or not 0 <= body[name] <= 2**53-1):
+             raise HTTPException(422, detail=f"invalid {name}")
++    for name in ("auto_low_pct", "auto_high_pct"):
++        if name in body and (type(body[name]) not in (int, float) or not math.isfinite(body[name]) or not 0 <= body[name] <= 100):
++            raise HTTPException(422, detail=f"invalid {name}")
++    if "auto_low_pct" in body and "auto_high_pct" in body and body["auto_low_pct"] >= body["auto_high_pct"]:
++        raise HTTPException(422, detail="invalid AUTO thresholds")
+     if body.get("mode") not in MODES:
+         raise HTTPException(422, detail="invalid mode")
+     for name in ("soil_valid", "air_valid", "tank_ok", "pump_on"):
+@@ -489,7 +495,8 @@
+         }
+         return {"device": device, "latest": latest, "history": rows, "commands": commands,
+                 "watering_events": events, "latest_ai": predictions[0] if predictions else None,
+-                "ai_history": predictions, "model_evaluation": evaluation, "watering_stats": watering_stats}
++                "ai_history": predictions, "model_evaluation": evaluation, "watering_stats": watering_stats,
++                "control_limits": manual_limits(_unpack_json(latest.get("payload")) if latest else {})}
+ 
+     @app.get("/api/v1/web/devices/{device_id}/export-csv")
+     def web_export_csv(device_id: str):
+@@ -559,7 +566,9 @@
+             if kind == "WATER":
+                 if type(duration) is not int or duration <= 0:
+                     raise HTTPException(400, detail="duration_ms phải là số nguyên dương")
+-                maximum = int(os.getenv("SG_MAX_PULSE_MS", os.getenv("SG_MAX_PUMP_MS", "1000")))
++                maximum = manual_limits()["manual_max_ms"]
++                if not maximum:
++                    raise HTTPException(503, detail="Giới hạn tưới chưa được cấu hình hợp lệ; tạm khóa tưới")
+                 if duration > maximum:
+                     raise HTTPException(400, detail=f"Thời gian tưới vượt giới hạn an toàn {maximum} ms")
+                 latest = database.one_on(conn, "SELECT * FROM telemetry WHERE device_id=? ORDER BY received_at DESC LIMIT 1", (device_id,))
+@@ -591,7 +600,7 @@
+                 elapsed = max(0, (datetime.now(timezone.utc)-received).total_seconds()*1000)
+                 if payload.get("cooldown_remaining_ms", 0) > elapsed:
+                     raise HTTPException(409, detail="Thiết bị đang trong thời gian nghỉ")
+-                if duration > payload.get("max_pulse_ms", maximum):
++                if duration > manual_limits(payload)["manual_max_ms"]:
+                     raise HTTPException(400, detail="Thời lượng vượt giới hạn thực của ESP32")
+                 if ((payload.get("quota_limit_starts", float("inf")) > 0 and payload.get("quota_starts", 0) >= payload.get("quota_limit_starts", float("inf")))
+                         or duration + payload.get("quota_reserved_ms", 0) > payload.get("quota_limit_ms", float("inf"))):
+--- /dev/null
++++ b/backend/control_limits.py
+@@ -0,0 +1,18 @@
++"""Public limits shared by Dashboard and command validation; never raise a cap."""
++import os
++
++
++def manual_limits(payload: dict | None = None) -> dict:
++    raw = os.getenv('SG_MAX_PULSE_MS', os.getenv('SG_MAX_PUMP_MS', '1000'))
++    try:
++        backend_max = int(raw)
++        if not 1 <= backend_max <= 60000:
++            raise ValueError
++    except (ValueError, TypeError):
++        backend_max = 0  # Invalid configuration locks WATER, not a permissive fallback.
++    firmware_max = (payload or {}).get('max_pulse_ms')
++    if type(firmware_max) is not int or not 0 <= firmware_max <= 60000:
++        firmware_max = None
++    effective = min(backend_max, firmware_max) if firmware_max is not None else backend_max
++    return {'manual_max_ms': effective, 'backend_max_ms': backend_max,
++            'firmware_max_ms': firmware_max, 'manual_ui_min_ms': 100}
+--- a/backend/static/index.html
++++ b/backend/static/index.html
+@@ -32,12 +32,12 @@
+       <article class="card sensor"><div class="sensor-head"><span>Phao mực nước</span><span class="sensor-icon">⌁</span></div><div class="sensor-value" style="font-size:18px;margin-top:22px" id="tankValue">Chưa rõ</div><div class="sensor-meta">GPIO26 · Công tắc phao</div><div style="margin-top:10px" id="tankStatus"></div></article>
+     </section>
+     <section class="grid main-grid">
+-      <article class="card chart-card"><div class="panel-head"><div><h2 class="panel-title">Diễn biến cảm biến</h2><p class="panel-sub">Độ ẩm đất và nhiệt độ · 30 phút tính đến mẫu đo mới nhất</p></div><span id="updatedAt" class="status-pill">Chưa đồng bộ</span></div><div class="chart-box"><canvas id="historyChart"></canvas></div></article>
++      <article class="card chart-card"><div class="panel-head"><div><h2 class="panel-title">Diễn biến cảm biến</h2><p class="panel-sub">Độ ẩm đất và nhiệt độ · 30 phút tính đến mẫu đo mới nhất</p></div><span id="updatedAt" class="status-pill">Chưa đồng bộ</span></div><p id="soilObservation" class="help" role="status"></p><div class="chart-box"><canvas id="historyChart"></canvas></div></article>
+       <article class="card control-card"><div class="panel-head"><div><h2 class="panel-title">Điều khiển thiết bị</h2><p class="panel-sub">Lệnh có hiệu lực tối đa 60 giây</p></div><span id="onlinePill" class="status-pill">Offline</span></div>
+         <div class="control-state"><span>Chế độ hiện tại</span><strong id="modeNow">—</strong></div>
+         <p id="commandFeedback" class="field-label" role="status" aria-live="polite"></p><label class="field-label" for="modeSelect">Chọn chế độ</label><div class="control-row"><select id="modeSelect" class="select"><option>OFF</option><option>MANUAL</option><option>AUTO</option></select><button id="modeBtn" class="btn btn-quiet admin-action">Cập nhật</button></div>
+         <div id="manualControls"><label class="field-label" for="waterSeconds">Tưới thủ công (giây)</label><div class="control-row"><input id="waterSeconds" class="input" type="number" min="0.1" max="1" step="0.1" value="0.5"><button id="waterBtn" class="btn btn-primary admin-action">Tưới ngay</button></div>
+-        <div id="waterLock" class="lock-message">Đang kiểm tra điều kiện cảm biến.</div></div><div id="modeGuidance" class="help" role="status"></div>
++        <p id="manualLimit" class="help"></p><div id="waterLock" class="lock-message">Đang kiểm tra điều kiện cảm biến.</div></div><div id="modeGuidance" class="help" role="status"></div>
+         <button id="stopBtn" class="btn btn-danger admin-action">Dừng bơm · STOP</button>
+         <p class="help">Backend kiểm tra phao, cảm biến đất và giới hạn xung trước khi xếp lệnh. ESP32 tiếp tục kiểm tra an toàn tại thiết bị.</p>
+       </article>
+@@ -215,13 +215,61 @@
+     if(lightChart){lightChart.data=lightConfig.data;lightChart.options=lightConfig.options;lightChart.update();}else lightChart=new Chart($('lightChart'),lightConfig);
+ 
+   }
++  function manualRange(d) {
++    const server=d?.control_limits?.manual_max_ms;
++    if(!Number.isSafeInteger(server)||server<=0)return null;
++    const fw=controlState(d).payload.max_pulse_ms;
++    return {min:100,max:Number.isSafeInteger(fw)&&fw>=0?Math.min(server,fw):server};
++  }
++  function manualError(d,ms) {
++    const range=manualRange(d);
++    if(!range||range.max<range.min)return 'Chưa có giới hạn tưới hợp lệ từ backend; tạm khóa tưới.';
++    if(!Number.isSafeInteger(ms)||ms<range.min)return 'Nhập thời gian tưới từ 0,1 giây, chính xác đến mili giây.';
++    return ms>range.max?`Thời gian tưới tối đa hiện tại là ${fmt(range.max/1000)} giây. Vui lòng nhập lại.`:'';
++  }
++  function telemetryFresh(d) {
++    const t=d.latest||{},now=Date.now();
++    const received=now-new Date(t.received_at).getTime(),measured=now-new Date(t.measured_at).getTime();
++    return !refreshFailed&&!!d.device?.connected&&Number.isFinite(received)&&received>=-5000&&received<=90000
++      &&Number.isFinite(measured)&&measured>=-5000&&measured<=90000;
++  }
++  function autoGuidance(d,control) {
++    if(!telemetryFresh(d))return 'Chưa có mẫu mới để xác nhận AUTO; chế độ và số đo là lần nhận gần nhất. Không thể xác nhận bơm đang chạy hay đã dừng.';
++    if(control.modeFromAck)return 'Đã nhận ACK; chờ telemetry xác nhận chế độ và điều kiện AUTO mới.';
++    const t=d.latest||{},p=control.payload,reasons=[];
++    if(t.pump_running)return 'ESP32 báo đầu ra bơm đang bật. STOP chuyển về OFF; cần quan sát motor và nước thực tế.';
++    if(!t.commissioned||t.storage_fault)reasons.push('thiết bị chưa sẵn sàng hoặc có lỗi lưu trữ');
++    if(!t.clock_ready||t.clock_fault)reasons.push('đồng hồ chưa sẵn sàng');
++    if(!(t.water_ok??t.tank_ok))reasons.push('phao chưa xác nhận đủ nước');
++    if(!t.soil_valid)reasons.push('cảm biến đất không hợp lệ');
++    if(control.remaining>0){const sec=Math.ceil(control.remaining/1000);reasons.push(`đang nghỉ, còn khoảng ${Math.floor(sec/60)} phút ${sec%60} giây`);}
++    if(Number.isFinite(p.auto_low_pct)&&Number.isFinite(t.soil_pct)&&t.soil_valid&&t.soil_pct>p.auto_low_pct)
++      reasons.push(`độ ẩm ${fmt(t.soil_pct)}% cao hơn ngưỡng bắt đầu ${fmt(p.auto_low_pct)}%`);
++    if(p.quota_scope==='AUTO') {
++      if(p.quota_limit_starts>0&&p.quota_starts>=p.quota_limit_starts)reasons.push('đã đạt giới hạn số lần AUTO');
++      if(Number.isFinite(p.auto_pulse_ms)&&Number.isFinite(p.quota_reserved_ms)&&Number.isFinite(p.quota_limit_ms)&&p.quota_limit_ms-p.quota_reserved_ms<p.auto_pulse_ms)
++        reasons.push(`ngân sách còn ${fmt(Math.max(0,p.quota_limit_ms-p.quota_reserved_ms)/1000)} giây, không đủ xung ${fmt(p.auto_pulse_ms/1000)} giây`);
++    }
++    const budget=Number.isFinite(p.quota_limit_ms)&&Number.isFinite(p.quota_reserved_ms)?` Ngân sách ${p.quota_scope||'thiết bị'} còn ${fmt(Math.max(0,p.quota_limit_ms-p.quota_reserved_ms)/1000)} giây.`:'';
++    const unknown= !Number.isFinite(p.auto_low_pct)||!Number.isFinite(p.auto_pulse_ms)?' Firmware chưa báo đủ ngưỡng/thời lượng AUTO; không suy đoán các giá trị này.':'';
++    return (reasons.length?`Điều kiện đang chặn theo mẫu gần nhất: ${reasons.join(' · ')}.`:'Chưa thấy điều kiện chặn trong mẫu gần nhất; ESP32 còn kiểm tra chuỗi mẫu khô và các guard cục bộ, chưa xác nhận sẽ tưới.')+budget+unknown+' Thời gian nghỉ là ước tính theo telemetry. STOP chuyển về OFF.';
++  }
++  function soilObservation(d) {
++    if(!telemetryFresh(d))return 'Dữ liệu đất đã cũ hoặc chưa kết nối; chưa xác nhận trạng thái cảm biến hiện tại.';
++    const rows=(d.history||[]).filter(x=>x.soil_valid&&Number.isFinite(x.soil_pct)&&x.measured_at).slice(-2);
++    if(rows.length<2)return '';
++    const [a,b]=rows,dt=new Date(b.measured_at)-new Date(a.measured_at);
++    if(a.boot_id&&a.boot_id===b.boot_id&&a.calibration_id===b.calibration_id&&dt>0&&dt<=90000&&Math.abs(b.soil_pct-a.soil_pct)>=20)
++      return 'Số đo đổi nhanh ≥20 điểm % giữa hai mẫu: đối chiếu thao tác tưới/di chuyển và ADC. Đây là dấu hiệu cần kiểm tra, chưa kết luận cảm biến lỗi.';
++    return '';
++  }
+   function render(d){
+     dashboard=d;const device=d.device||{}, t=d.latest||{}, control=controlState(d);
+     $('soilValue').innerHTML=`${escapeHtml(fmt(t.soil_pct))}<span> %</span>`;const dry=device.dry_raw??2511,wet=device.wet_raw??979;$('soilMeta').textContent=`ADC ${fmt(t.soil_raw)} · Mốc khô/ướt: ${fmt(dry)} / ${fmt(wet)}`;
+-    $('soilStatus').innerHTML=`<span class="status-pill ${t.soil_valid?'good':'bad'}"><i class="dot"></i>${t.soil_valid?'Cảm biến hợp lệ':'Cảm biến lỗi'}</span>`;
++    $('soilStatus').innerHTML=`<span class="status-pill ${telemetryFresh(d)&&t.soil_valid?'good':'bad'}"><i class="dot"></i>${!telemetryFresh(d)?'Chưa có mẫu mới':t.soil_valid?'Cảm biến hợp lệ':'Cảm biến lỗi'}</span>`;
+     $('tempValue').innerHTML=`${escapeHtml(fmt(t.temperature_c))}<span> °C</span>`;$('airValue').innerHTML=`${escapeHtml(fmt(t.humidity_pct))}<span> %</span>`;$('lightValue').textContent=fmt(t.light_raw);
+     const water=t.water_ok??t.tank_ok; $('tankValue').textContent=water===true||water===1?'Đủ nước':water===false||water===0?'Cảnh báo hết nước':'Chưa rõ';
+-    $('tankStatus').innerHTML=`<span class="status-pill ${(water===true||water===1)?'good':'bad'}"><i class="dot"></i>${(water===true||water===1)?'Phao an toàn':'Kiểm tra bình nước'}</span>`;
++    $('tankStatus').innerHTML=`<span class="status-pill ${telemetryFresh(d)&&(water===true||water===1)?'good':'bad'}"><i class="dot"></i>${!telemetryFresh(d)?'Trạng thái phao đã cũ':(water===true||water===1)?'Phao an toàn':'Kiểm tra bình nước'}</span>`;
+     const online=!!device.connected&&!!device.last_seen_at&&(Date.now()-new Date(device.last_seen_at).getTime()<120000);
+     setPill($('onlinePill'),online?'Online':'Offline',online?'good':'bad');$('modeNow').textContent=control.mode+(control.modeFromAck?' · ESP32 đã xác nhận':'');
+     if(modeSelectionDevice!==device.device_id){modeSelectionDevice=device.device_id;modeSelectionEdited=false;}
+@@ -237,14 +285,16 @@
+     if(t.pump_running)lock.push('Bơm đang chạy');
+     if(control.modeFromAck && t.mode!==control.mode)lock.push('Đã nhận ACK; đang chờ trạng thái cảm biến mới');
+     const limits=control.payload, requestedMs=Number($('waterSeconds').value)*1000;
+-    if(Number.isFinite(limits.max_pulse_ms))$('waterSeconds').max=limits.max_pulse_ms/1000;
+-    if(!Number.isFinite(requestedMs)||requestedMs<=0)lock.push('Nhập thời lượng tưới hợp lệ');
+-    if(requestedMs>limits.max_pulse_ms)lock.push(`Mỗi lần tối đa ${limits.max_pulse_ms/1000} giây`);
++    const range=manualRange(d),durationError=manualError(d,requestedMs);
++    $('waterSeconds').max=range?range.max/1000:0;
++    $('manualLimit').textContent=range&&range.max>=100?`Giới hạn cho phép: 0,1–${fmt(range.max/1000)} giây (theo backend và ESP32).`:'Chưa nhận được giới hạn hợp lệ; tạm khóa tưới.';
++    if(durationError)lock.push(durationError);
+     if((limits.quota_limit_starts>0 && limits.quota_starts>=limits.quota_limit_starts) || requestedMs+limits.quota_reserved_ms>limits.quota_limit_ms)lock.push('Đã đạt hạn mức ESP32; xem hạn mức bên dưới');
+     if(limits.quota_limit_starts===undefined&&control.lastWater?.ack_result==='quota')lock.push('ESP32 báo hết hạn mức; cần firmware mới để xem giới hạn thực');if(!(water===true||water===1))lock.push('Phao không xác nhận đủ nước');if(!(t.soil_valid===true||t.soil_valid===1))lock.push('Cảm biến đất lỗi hoặc chưa có dữ liệu');
+     $('manualControls').hidden=control.mode!=='MANUAL';
+-    const autoBudget=Number.isFinite(limits.quota_limit_ms)?`Ngân sách thời gian còn ${fmt(Math.max(0,limits.quota_limit_ms-(limits.quota_reserved_ms||0))/1000)} giây.`:'Chưa có thông tin ngân sách từ thiết bị.';
+-    $('modeGuidance').textContent=control.mode==='OFF'?'Đã tắt điều khiển. Chọn Thủ công hoặc Tự động rồi cập nhật khi cần.':control.mode==='AUTO'?`Thiết bị đang tự điều khiển theo quy tắc tại ESP32. ${autoBudget} Ngưỡng tưới chưa được firmware gửi lên, nên giao diện không suy đoán lý do AUTO chưa tưới. STOP chuyển về OFF.`:'Tưới theo thời lượng đã nhập; đầu ra bơm phải tự tắt khi hết thời gian. STOP dùng để dừng sớm.';
++    $('soilObservation').textContent=soilObservation(d);
++    $('modeGuidance').textContent=control.mode==='OFF'?'Đã tắt điều khiển. Chọn Thủ công hoặc Tự động rồi cập nhật khi cần.':control.mode==='AUTO'?autoGuidance(d,control):'Tưới theo thời lượng đã nhập; đầu ra bơm phải tự tắt khi hết thời gian. STOP dùng để dừng sớm.';
++    if(!telemetryFresh(d))$('modeGuidance').textContent='Chưa có mẫu mới: chế độ và cảm biến bên trên là lần nhận gần nhất; không xác nhận trạng thái bơm hiện tại.';
+     $('waterBtn').disabled=lock.length>0;$('waterLock').textContent=lock.length?`Đã khoá tưới: ${lock.join(' · ')}.`:auth?'Sẵn sàng gửi yêu cầu. Bấm một lần và chờ ESP32 xác nhận.':'Cần đăng nhập quản trị để gửi lệnh tưới.';
+     const boolLabel=(value,yes,no)=>value===true||value===1?yes:value===false||value===0?no:'Chưa xác định';const hw=[['Phiên khởi động (boot_id)',t.boot_id],['Số thứ tự mẫu (sample_seq)',t.sample_seq],['Lệnh gần nhất (last_command_seq)',t.last_command_seq],['Sự kiện chờ gửi (queued_events)',t.queued_events],['Lỗi lưu trữ (storage_fault)',boolLabel(t.storage_fault,'Có lỗi lưu trữ','Không phát hiện lỗi lưu trữ')],['Đồng hồ hệ thống (clock_ready)',boolLabel(t.clock_ready,'Đã đồng bộ','Chưa sẵn sàng')],['Lỗi đồng hồ (clock_fault)',boolLabel(t.clock_fault,'Có lỗi đồng hồ','Không phát hiện lỗi đồng hồ')],['Mã hiệu chuẩn (calibration_id)',device.calibration_id||t.calibration_id]];
+     const isTrue=v=>v===true||v===1,isFalse=v=>v===false||v===0;
+@@ -253,19 +303,19 @@
+     if(isTrue(t.clock_fault))syncWarnings.push('Có lỗi đồng hồ');
+     if(isFalse(t.clock_ready))syncWarnings.push('Đồng hồ chưa đồng bộ');
+     const queued=t.queued_events;
+-    if(Number.isInteger(queued)&&queued>0)syncWarnings.push(`Còn ${queued} sự kiện chờ gửi`);
++    const syncing=Number.isInteger(queued)&&queued>0;
+     const syncKnown=isFalse(t.storage_fault)&&isFalse(t.clock_fault)&&isTrue(t.clock_ready)&&queued===0;
+-    const syncFresh=online&&!refreshFailed;
+-    setPill($('syncStatus'),!syncFresh?'Chưa cập nhật':syncWarnings.length?'Cần kiểm tra':syncKnown?'Đã đồng bộ':'Chưa đủ thông tin',syncFresh&&syncKnown?'good':syncWarnings.length?'bad':'');
+-    $('syncMessage').textContent=[!syncFresh?'Chưa xác nhận trạng thái hiện tại; thông tin dưới đây là lần nhận gần nhất.':'',...syncWarnings,syncFresh&&!syncWarnings.length?(syncKnown?'Đồng hồ đã đồng bộ, không có sự kiện chờ gửi.':'Đang chờ đủ thông tin đồng hồ, lưu trữ và hàng đợi.'):'' ].filter(Boolean).join(' · ');
++    const syncFresh=telemetryFresh(d);
++    setPill($('syncStatus'),!syncFresh?'Chưa cập nhật':syncWarnings.length?'Cần kiểm tra':syncing?'Đang đồng bộ':syncKnown?'Đã đồng bộ':'Chưa đủ thông tin',syncFresh&&syncKnown?'good':syncWarnings.length?'bad':'');
++    $('syncMessage').textContent=[!syncFresh?'Chưa xác nhận trạng thái hiện tại; thông tin dưới đây là lần nhận gần nhất.':'',...syncWarnings,syncing?`Còn ${queued} sự kiện chờ gửi; chưa đủ bằng chứng kết luận đồng bộ thất bại.`:'',syncFresh&&!syncWarnings.length&&!syncing?(syncKnown?'Đồng hồ đã đồng bộ, không có sự kiện chờ gửi.':'Đang chờ đủ thông tin đồng hồ, lưu trữ và hàng đợi.'):'' ].filter(Boolean).join(' · ');
+     $('hardwareGrid').innerHTML=hw.map(([a,b])=>`<div class="hardware-item"><span>${a}</span><strong>${escapeHtml(b)}</strong></div>`).join('');
+     $('exportCsv').href=`/api/v1/web/devices/${encodeURIComponent(device.device_id)}/export-csv`;
+-    const stats=d.watering_stats||{};$('statDaily').textContent=Number.isFinite(limits.quota_limit_starts)?(limits.quota_limit_starts===0?`${fmt(limits.quota_starts)} lần · Không giới hạn số lần`:`${fmt(limits.quota_starts)} / ${fmt(limits.quota_limit_starts)} lần`):'Chưa có hạn mức ESP32';$('statDailyNote').textContent=Number.isFinite(limits.quota_limit_ms)?`${limits.quota_scope?`Ngân sách ${limits.quota_scope} · `:''}Đã dành ${fmt(limits.quota_reserved_ms/1000)} / ${fmt(limits.quota_limit_ms/1000)} giây · Đặt lại: ${limits.quota_window_ends_at?time(limits.quota_window_ends_at*1000):'chưa bắt đầu cửa sổ'}`:'Nạp firmware hỗ trợ báo hạn mức thực';$('statCount').textContent=`${fmt(stats.total_events)} lần`;$('statCountNote').textContent=`Thủ công: ${fmt(stats.manual_count)} · Tự động: ${fmt(stats.auto_count)}`;$('statDuration').textContent=`${Number(stats.total_actual_seconds||0).toLocaleString('vi-VN',{minimumFractionDigits:1,maximumFractionDigits:1})} giây`;$('statDurationMs').textContent=`${fmt(stats.total_actual_ms)} ms`;$('statWater').textContent=stats.flow_is_configured?`~${fmt(stats.estimated_water_ml)} ml`:'Chưa hiệu chuẩn';$('statFlowNote').textContent=stats.flow_is_configured?(stats.flow_note||'Ước tính theo lưu lượng cấu hình'):'Cần đo lượng nước thực tế; chưa quy đổi sang ml';
++    const stats=d.watering_stats||{};$('statDaily').textContent=Number.isFinite(limits.quota_limit_starts)?(limits.quota_limit_starts===0?`${fmt(limits.quota_starts)} lần · Không giới hạn số lần`:`${fmt(limits.quota_starts)} / ${fmt(limits.quota_limit_starts)} lần`):'Chưa có hạn mức ESP32';$('statDailyNote').textContent=Number.isFinite(limits.quota_limit_ms)?`${limits.quota_scope?`Ngân sách ${limits.quota_scope} · `:''}Đã dành ${fmt(limits.quota_reserved_ms/1000)} / ${fmt(limits.quota_limit_ms/1000)} giây (giới hạn thời gian riêng với số lần) · Cửa sổ 24 giờ, đặt lại: ${limits.quota_window_ends_at?time(limits.quota_window_ends_at*1000):'chưa bắt đầu cửa sổ'}`:'Nạp firmware hỗ trợ báo hạn mức thực';$('statCount').textContent=`${fmt(stats.total_events)} lần`;$('statCountNote').textContent=`Thủ công: ${fmt(stats.manual_count)} · Tự động: ${fmt(stats.auto_count)}`;$('statDuration').textContent=`${Number(stats.total_actual_seconds||0).toLocaleString('vi-VN',{minimumFractionDigits:1,maximumFractionDigits:1})} giây`;$('statDurationMs').textContent=`${fmt(stats.total_actual_ms)} ms`;$('statWater').textContent=stats.flow_is_configured?`~${fmt(stats.estimated_water_ml)} ml`:'Chưa hiệu chuẩn';$('statFlowNote').textContent=stats.flow_is_configured?(stats.flow_note||'Ước tính theo lưu lượng cấu hình'):'Cần đo lượng nước thực tế; chưa quy đổi sang ml';
+     $('evaluationScope').textContent=d.model_evaluation?.data_origin==='real'?'Kết quả trên dữ liệu thực nghiệm của mô hình đã nạp; không phải cam kết độ chính xác cho mọi phiên.':d.model_evaluation?.data_origin==='synthetic'?'Kết quả trên dữ liệu giả lập để kiểm tra pipeline; không đại diện cho độ chính xác trên cây thật.':'Chưa có thông tin nguồn đánh giá.';
+     const metrics=d.model_evaluation?.test_mae||{};$('modelMeta').textContent=d.model_evaluation?`Mô hình: ${metricNames[d.model_evaluation.selected_model]||d.model_evaluation.selected_model}${d.model_evaluation.selected_model==='linear_regression'?' (Hồi quy tuyến tính)':''} · Dự báo trước ${d.model_evaluation.horizon_minutes} phút · Nguồn dữ liệu: ${d.model_evaluation.data_origin}`:'Chưa có thông tin mô hình';$('academicLabel').textContent=`Nguồn: ${d.model_evaluation?.data_origin==='synthetic'?'Dữ liệu giả lập (synthetic)':d.model_evaluation?.data_origin||'chưa rõ'} · Khóa tự động bật bơm (can_trigger_pump=false)`;
+     $('maeBody').innerHTML=Object.entries(metricNames).map(([key,label])=>`<tr><td>${label}${key===d.model_evaluation?.selected_model?' · Được chọn':''}</td><td>${escapeHtml(fmt(metrics[key]))}</td></tr>`).join('');
+     const ai=d.latest_ai?.raw_output||d.latest_ai;showPrediction(ai);
+-    const sourceName=value=>({MANUAL:'Thủ công',RULE:'Tự động',AI:'AI đề xuất',SCHEDULED:'Theo lịch'}[String(value||'').toUpperCase()]||value||'—');const reasonName=value=>({Reboot:'Gián đoạn do khởi động lại',Manual:'Tưới thủ công',ManualCheck:'Kiểm tra bơm',Scheduled:'Tưới theo lịch',Duration:'Tưới theo thời lượng',Threshold:'Tưới theo ngưỡng',Tank:'Dừng do phao báo thiếu nước',Stop:'Dừng theo lệnh'}[value]||value||'—');$('eventsBody').innerHTML=d.watering_events?.length?d.watering_events.map(e=>`<tr><td>${time(((Number(e.ended_at)||Number(e.started_at)||0))*1000)}</td><td>${escapeHtml(sourceName(e.source))}</td><td>${escapeHtml(reasonName(e.reason))}</td><td>${e.reason==='Reboot'&&e.actual_ms===null?'Gián đoạn do khởi động lại':e.actual_ms===null?'Chưa ghi nhận':`${(Number(e.actual_ms)/1000).toLocaleString('vi-VN',{minimumFractionDigits:1,maximumFractionDigits:1})} giây (${fmt(e.actual_ms)} ms)`}</td></tr>`).join(''):'<tr><td colspan="4" class="empty">Chưa có sự kiện</td></tr>';
++    const sourceName=value=>({MANUAL:'Thủ công',RULE:'Tự động',AI:'AI đề xuất',SCHEDULED:'Theo lịch'}[String(value||'').toUpperCase()]||value||'—');const reasonName=value=>({Reboot:'Gián đoạn do khởi động lại',Manual:'Tưới thủ công',ManualCheck:'Kiểm tra bơm',Scheduled:'Tưới theo lịch',Duration:'Tưới theo thời lượng',Threshold:'Tưới theo ngưỡng',Tank:'Dừng do phao báo thiếu nước',Stop:'Dừng theo lệnh',Wet:'Dừng do đất đạt ngưỡng ẩm',Sensor:'Dừng do cảm biến lỗi hoặc mẫu cũ',Guard:'Dừng do bảo vệ thiết bị'}[value]||value||'—');$('eventsBody').innerHTML=d.watering_events?.length?d.watering_events.map(e=>`<tr><td>${time(((Number(e.ended_at)||Number(e.started_at)||0))*1000)}</td><td>${escapeHtml(sourceName(e.source))}</td><td>${escapeHtml(reasonName(e.reason))}</td><td>${e.reason==='Reboot'&&e.actual_ms===null?'Gián đoạn do khởi động lại':e.actual_ms===null?'Chưa ghi nhận':`${(Number(e.actual_ms)/1000).toLocaleString('vi-VN',{minimumFractionDigits:1,maximumFractionDigits:1})} giây (${fmt(e.actual_ms)} ms)`}</td></tr>`).join(''):'<tr><td colspan="4" class="empty">Chưa có sự kiện</td></tr>';
+     $('commandsBody').innerHTML=d.commands?.length?d.commands.map(c=>{
+       const name=({WATER:'Tưới theo thời lượng',SET_MODE:'Đổi chế độ',STOP:'Dừng bơm'})[c.kind]||'Lệnh khác';
+       const label=name+(c.mode?` · ${modeLabels[c.mode]||c.mode}`:'')+(c.duration_ms?` · ${fmt(Number(c.duration_ms)/1000)} giây`:'');
+@@ -280,7 +330,11 @@
+   async function createCommand(body){
+     if(!auth){openLogin();return;}
+     if(body.kind!=='STOP' && dashboard?.device?.device_id!==selected)return;
+-    if(body.kind==='WATER'&&$('waterBtn').disabled)return;
++    if(body.kind==='WATER'){
++      const error=manualError(dashboard,body.duration_ms);
++      if(error){notice(error,'error');return;}
++      if($('waterBtn').disabled)return;
++    }
+     const deviceId=selected;
+     if(body.kind!=='STOP' && (storedRequest(deviceId)||sending.has(deviceId)||uncertainCommands.has(deviceId)||trackedCommands.has(deviceId)||(dashboard?.commands||[]).some(c=>c.status==='PENDING'&&!c.ack_result)))return;
+     const expected=Math.max(Number(dashboard?.device?.last_command_seq||0),Number(dashboard?.latest?.last_command_seq||0),0,...(dashboard?.commands||[]).map(c=>c.command_seq));
+@@ -308,7 +362,7 @@
+   }
+   $('modeBtn').onclick=()=>createCommand({kind:'SET_MODE',mode:$('modeSelect').value,ttl_sec:30});
+   $('waterSeconds').oninput=()=>{if(dashboard)render(dashboard);};
+-  $('waterBtn').onclick=()=>{const seconds=Number($('waterSeconds').value);if(!Number.isFinite(seconds)||seconds<=0){notice('Nhập thời gian tưới hợp lệ.','error');return;}createCommand({kind:'WATER',duration_ms:Math.round(seconds*1000),ttl_sec:30});};
++  $('waterBtn').onclick=()=>{const seconds=Number($('waterSeconds').value);if(!Number.isFinite(seconds)||seconds<=0){notice('Nhập thời gian tưới hợp lệ.','error');return;}createCommand({kind:'WATER',duration_ms:seconds*1000,ttl_sec:30});};
+   $('stopBtn').onclick=()=>createCommand({kind:'STOP',ttl_sec:30});
+   $('predictBtn').onclick=async()=>{if(!auth){openLogin();return;}try{if(dashboard?.latest?.data_origin==='real'&&(sessionDevice!==selected||!sessionRevision||sessionDraft()!==savedSessionDraft))throw new Error('Chọn và lưu phiên nhật ký đã đối soát trước khi dự báo');const result=await api(`/api/v1/web/devices/${encodeURIComponent(selected)}/predict`,{method:'POST',body:JSON.stringify({watering_history_complete:$('historyComplete').checked,reviewed_until:dashboard?.latest?.measured_at,reviewed_boot_id:dashboard?.latest?.boot_id,session_id:sessionDevice===selected?sessionId:null,session_revision:sessionDevice===selected?sessionRevision:null})});$('historyComplete').checked=false;showPrediction(result);notice(result.status==='available'?'Đã lưu kết quả dự đoán AI.':'AI từ chối dự đoán an toàn: '+result.reason,result.status==='available'?'ok':'warn');await refresh();}catch(e){notice(e.message,'error');}};
+   let sessionDevice=null, sessionRows=[], sessionId=null, sessionRevision=0, sessionEvents=[], sessionUnknown=[], sessionObservations=[], sessionBusy=false;
+--- /dev/null
++++ b/backend/tests/test_control_limits.py
+@@ -0,0 +1,49 @@
++import pytest
++from backend.control_limits import manual_limits
++from backend.tests.test_api import client, db, telemetry, headers, DEVICE
++from backend.database import utc_iso
++
++
++@pytest.mark.parametrize('raw,expected',[('1000',1000),('bad',0),('0',0),('-1',0),('60001',0)])
++def test_configuration_fails_closed(monkeypatch,raw,expected):
++    monkeypatch.setenv('SG_MAX_PULSE_MS',raw)
++    assert manual_limits({'max_pulse_ms':3000})['manual_max_ms']==expected
++
++
++def test_dashboard_and_command_share_effective_limit(client,monkeypatch):
++    monkeypatch.setenv('SG_MAX_PULSE_MS','1000')
++    row=telemetry();row.update(mode='MANUAL',commissioned=True,timestamp=utc_iso(),max_pulse_ms=3000)
++    assert client.post(f'/api/v1/devices/{DEVICE}/telemetry',headers=headers(),json=row).status_code==200
++    dash=client.get(f'/api/v1/web/devices/{DEVICE}/dashboard').json()
++    assert dash['control_limits']['manual_max_ms']==1000
++    route=f'/api/v1/web/devices/{DEVICE}/commands'
++    assert client.post(route,admin=True,json={'kind':'WATER','duration_ms':3000}).status_code==400
++    assert client.post(route,admin=True,json={'kind':'WATER','duration_ms':1000}).status_code==201
++
++
++def test_firmware_limit_can_only_reduce_backend_limit(client,monkeypatch):
++    monkeypatch.setenv('SG_MAX_PULSE_MS','1000')
++    row=telemetry();row.update(mode='MANUAL',commissioned=True,timestamp=utc_iso(),max_pulse_ms=300)
++    assert client.post(f'/api/v1/devices/{DEVICE}/telemetry',headers=headers(),json=row).status_code==200
++    assert client.get(f'/api/v1/web/devices/{DEVICE}/dashboard').json()['control_limits']['manual_max_ms']==300
++    assert client.post(f'/api/v1/web/devices/{DEVICE}/commands',admin=True,json={'kind':'WATER','duration_ms':500}).status_code==400
++
++
++@pytest.mark.parametrize('extra',[{'auto_low_pct':True},{'auto_high_pct':101},{'auto_low_pct':45,'auto_high_pct':38},{'auto_pulse_ms':-1}])
++def test_bad_auto_diagnostics_rejected(client,extra):
++    row=telemetry();row.update(extra)
++    assert client.post(f'/api/v1/devices/{DEVICE}/telemetry',headers=headers(),json=row).status_code==422
++
++
++def test_old_and_new_firmware_diagnostics_compatible(client):
++    for seq,extra in [(1,{}),(2,{'auto_low_pct':38,'auto_high_pct':45,'auto_pulse_ms':3000,'auto_cooldown_ms':300000})]:
++        row=telemetry(seq);row.update(extra)
++        assert client.post(f'/api/v1/devices/{DEVICE}/telemetry',headers=headers(),json=row).status_code==200
++
++
++def test_invalid_cap_locks_water_but_does_not_block_stop(client,monkeypatch):
++    monkeypatch.setenv('SG_MAX_PULSE_MS','bad')
++    route=f'/api/v1/web/devices/{DEVICE}/commands'
++    assert client.get(f'/api/v1/web/devices/{DEVICE}/dashboard').json()['control_limits']['manual_max_ms']==0
++    assert client.post(route,admin=True,json={'kind':'WATER','duration_ms':500}).status_code==503
++    assert client.post(route,admin=True,json={'kind':'STOP'}).status_code==201
+--- a/backend/tests/dashboard_controls.test.cjs
++++ b/backend/tests/dashboard_controls.test.cjs
+@@ -8,7 +8,7 @@
+   let posts=0, finishPost, chart, lightChart, getError=false, hangGet=false;
+   const requests=[],timers=new Map();let timerId=0;
+   function Chart(element,config){Object.assign(this,config);this.update=()=>{};if(element===el('historyChart'))chart=this;else lightChart=this;}
+-  const data={device:{device_id:'garden',connected:true,last_seen_at:new Date().toISOString()},latest:{mode:'OFF',water_ok:true,soil_valid:true,clock_ready:true,commissioned:true,received_at:new Date().toISOString(),measured_at:new Date().toISOString()},commands:[]};
++  const data={control_limits:{manual_max_ms:1000},device:{device_id:'garden',connected:true,last_seen_at:new Date().toISOString()},latest:{mode:'OFF',water_ok:true,soil_valid:true,clock_ready:true,commissioned:true,received_at:new Date().toISOString(),measured_at:new Date().toISOString()},commands:[]};
+   const context={Uint8Array,crypto:require('node:crypto').webcrypto,localStorage:{getItem:k=>sharedStorage.get(k)||null,setItem:(k,v)=>sharedStorage.set(k,v),removeItem:k=>sharedStorage.delete(k)},document:{getElementById:el,activeElement:null},window:{Chart},Chart,sessionStorage:{getItem:()=> 'test',setItem(){},removeItem(){}},Date,Number,Math,JSON,encodeURIComponent,AbortController,setTimeout(fn){timers.set(++timerId,fn);return timerId;},clearTimeout(id){timers.delete(id);},setInterval(){},fetch:async(url,options)=>{
+     if(url.includes('/sessions')&&sessionHandler)return sessionHandler(url,options);
+     if(options.method==='POST'){posts++;const seq=posts;await new Promise((resolve,reject)=>{finishPost=resolve;requests.push({resolve,reject,body:JSON.parse(options.body)});options.signal.addEventListener('abort',()=>reject(new Error('aborted')));});return {ok:true,status:201,json:async()=>({command_seq:seq})};}
+@@ -245,3 +245,42 @@
+   assert.match(s.el('evaluationScope').textContent,origin==='real'?/thực nghiệm/:origin==='synthetic'?/giả lập/:/Chưa có/);
+  }
+ });
++
++
++test('manual UI uses lower backend cap and rejects direct oversized submission',async()=>{
++ const s=setup();s.data.latest.mode='MANUAL';s.data.latest.payload={max_pulse_ms:3000};s.api.render(s.data);
++ assert.equal(s.el('waterSeconds').max,1);assert.match(s.el('manualLimit').textContent,/0,1–1/);
++ s.el('waterSeconds').value='3';s.el('waterSeconds').oninput();assert.equal(s.el('waterBtn').disabled,true);
++ await s.api.createCommand({kind:'WATER',duration_ms:3000});assert.equal(s.posts(),0);
++ assert.match(s.el('notice').textContent,/tối đa hiện tại là 1/);
++ s.data.latest.payload.max_pulse_ms=300;s.api.render(s.data);assert.equal(s.el('waterSeconds').max,0.3);
++});
++test('missing limits fail closed and changing devices resets maximum',()=>{
++ const s=setup();s.data.latest.mode='MANUAL';delete s.data.control_limits;s.api.render(s.data);
++ assert.equal(s.el('waterBtn').disabled,true);assert.equal(s.el('waterSeconds').max,0);
++ s.data.control_limits={manual_max_ms:1000};s.api.render(s.data);assert.equal(s.el('waterBtn').disabled,false);
++});
++test('AUTO explains known tank cooldown and insufficient pulse budget without inventing thresholds',()=>{
++ const s=setup();s.data.latest.mode='AUTO';s.data.latest.water_ok=false;
++ s.data.latest.payload={cooldown_remaining_ms:300000,quota_scope:'AUTO',quota_limit_ms:20000,quota_reserved_ms:18000,auto_pulse_ms:3000};
++ s.api.render(s.data);const msg=s.el('modeGuidance').textContent;
++ assert.match(msg,/phao/);assert.match(msg,/đang nghỉ/);assert.match(msg,/không đủ xung 3/);assert.match(msg,/chưa báo đủ/);
++ s.data.latest.received_at=new Date(Date.now()-180000).toISOString();s.api.render(s.data);
++ assert.match(s.el('modeGuidance').textContent,/Chưa có mẫu mới/);assert.doesNotMatch(s.el('modeGuidance').textContent,/đang nghỉ/);
++});
++test('pending event alone means syncing rather than failure',()=>{
++ const s=setup();Object.assign(s.data.latest,{queued_events:1,storage_fault:false,clock_fault:false});s.api.render(s.data);
++ assert.equal(s.el('syncStatus').textContent,'Đang đồng bộ');assert.doesNotMatch(s.el('syncStatus').className,/bad/);
++ s.data.latest.storage_fault=true;s.api.render(s.data);assert.equal(s.el('syncStatus').textContent,'Cần kiểm tra');
++});
++test('soil jumps are advisory and null is not converted to zero',()=>{
++ const s=setup();const now=Date.now();s.data.history=[{boot_id:'b',calibration_id:'c',soil_valid:true,soil_pct:0,measured_at:new Date(now-30000).toISOString()},{boot_id:'b',calibration_id:'c',soil_valid:true,soil_pct:55,measured_at:new Date(now).toISOString()}];
++ s.api.render(s.data);assert.match(s.el('soilObservation').textContent,/đổi nhanh/);
++ s.data.history[0].soil_pct=null;s.api.render(s.data);assert.equal(s.el('soilObservation').textContent,'');
++});
++
++test('offline OFF is historical, not a claim that physical output is off',()=>{
++ const s=setup();s.data.device.connected=false;s.api.render(s.data);
++ assert.match(s.el('modeGuidance').textContent,/không xác nhận trạng thái bơm/);
++ assert.match(s.el('tankStatus').innerHTML,/đã cũ/);
++});
+--- a/firmware/src/main.cpp
++++ b/firmware/src/main.cpp
+@@ -59,6 +59,9 @@
+   j["quota_scope"]=manual?"MANUAL":"AUTO";
+   j["quota_policy"]="separate-v2";
+   j["max_pulse_ms"]=limits.maxPulseMs;
++  // Observability only: the controller remains the sole decision maker.
++  j["auto_pulse_ms"]=limits.pulseMs;j["auto_cooldown_ms"]=limits.cooldownMs;
++  j["auto_low_pct"]=limits.low;j["auto_high_pct"]=limits.high;
+   j["quota_limit_ms"]=limits.maxDayMs;j["quota_limit_starts"]=(controller->mode()==garden::Mode::Manual && limits.manualUnlimitedStarts)?0:limits.maxDayStarts; // zero: no count limit
+   j["quota_reserved_ms"]=quotaExpired?0:(manual?state.manualReservedMs:state.reservedMs);
+   j["quota_starts"]=quotaExpired?0:(manual?state.manualStarts:state.starts);

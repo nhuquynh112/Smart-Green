@@ -1,0 +1,33 @@
+PASS | A01 low boundary requires three distinct dry samples
+PASS | A02 repeated same sample cannot satisfy debounce
+PASS | A03 above low resets dry sequence
+PASS | A04 high boundary stops, intermediate moisture does not restart
+PASS | A05 empty tank blocks AUTO
+PASS | A06 tank loss during AUTO stops and logs Tank
+PASS | A07 invalid soil flag blocks start and breaks debounce
+PASS | A08 NaN infinity negative and over 100 soil block start
+PASS | A09 stale soil blocks start and stops active pulse
+PASS | A10 stale boundary 4000ms valid, 4001ms rejected
+PASS | A11 exact pulse duration and event reservation
+PASS | A12 STOP OFF expired and duplicate shut down AUTO
+PASS | A13 OFF and MANUAL never run dry AUTO rule
+PASS | A14 AUTO cooldown not bypassed by zero manual cooldown
+PASS | A15 AUTO count quota still enforced with unlimited manual starts
+PASS | A16 insufficient time budget blocks full AUTO pulse
+PASS | A17 exact remaining budget accepted, early stop no refund
+PASS | A18 AUTO and MANUAL budgets independent
+PASS | A19 rolling 24h quota reset boundary
+PASS | A20 missing clock and rollback block AUTO
+PASS | A21 commissioning invalid config and failed storage block start
+PASS | A22 failed output and guard latch fault prevent restart
+PASS | A23 full log blocks watering until FIFO ACK
+PASS | A24 running event cannot ACK, stopped event ACK once
+PASS | A25 reboot keeps quota and marks interrupted event Reboot
+PASS | A26 offline AUTO remains locally bounded without server calls
+PASS | A27 guard heartbeat tank and duration boundaries
+PASS | A28 storage failure while stopping keeps fake output OFF
+PASS | A29 fresh boot defaults OFF
+PASS | A30 persisted AUTO resumes after reboot cooldown and fresh dry samples
+PASS | A31 NaN infinity and out of range during AUTO stop as Sensor
+PASS | A32 millis rollover preserves AUTO pulse deadline
+SUMMARY | 32 PASS | 0 FAIL | host-only fake output

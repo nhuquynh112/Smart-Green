@@ -1,0 +1,15 @@
+{
+  "session_id": "f7f4a3da2d80552f9c439d21e97479cc",
+  "device_id": "garden-01",
+  "revision": 2,
+  "calibration_id": "soil-2511-979",
+  "end": null,
+  "events": [],
+  "history_complete": false,
+  "last_watered_at_before_start": null,
+  "name": "w07",
+  "notes": "21/11/2026 (giờ Việt Nam): đầu phiên gián đoạn kết nối HTTP; mẫu cuối trước gián đoạn nhận 11:55:33. Người dùng rút/cắm USB trong khoảng xử lý sự cố, chưa rõ giờ chính xác. Nạp lại firmware esp32dev thành công khoảng 12:09 sau sửa địa chỉ backend LAN thành 192.168.102.21:8000. Mẫu đầu sau nạp nhận 12:09:54 chưa đồng bộ giờ; mẫu đo hợp lệ 12:10:20, nhận 12:10:22, boot_id e9144e9ebc3d55c8, mode OFF. Khi xử lý dữ liệu phải tách đoạn reset/mất dữ liệu, không nội suy qua khoảng này. Kế hoạch W07 không tưới để theo dõi đất khô; chưa xác nhận toàn bộ phiên. Giờ tưới chậu gần nhất trước phiên chưa rõ.",
+  "observations": [],
+  "start": "2026-11-21T04:57:23+00:00",
+  "unknown_intervals": []
+}

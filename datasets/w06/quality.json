@@ -1,0 +1,332 @@
+{
+  "rows": 1237,
+  "session_seconds": 37117.0,
+  "active": 0,
+  "revision": 4,
+  "history_complete": true,
+  "last_watered_at_before_start": null,
+  "active_sessions": [],
+  "duplicate_identity": 0,
+  "calibrations": {
+    "soil-2511-979": 1237
+  },
+  "boots": {
+    "010a0d34c4adaaa9": 1237
+  },
+  "received_at": {
+    "first": "2026-11-20 07:53:43.127053+00:00",
+    "last": "2026-11-20 18:11:44.593890+00:00",
+    "span_seconds": 37081.466837,
+    "missing": 0,
+    "duplicate": 0,
+    "backwards": 0,
+    "interval_min": 21.398357,
+    "interval_median": 29.9879915,
+    "interval_max": 44.307883,
+    "gaps_over_90s": []
+  },
+  "measured_at": {
+    "first": "2026-11-20 07:53:40+00:00",
+    "last": "2026-11-20 18:11:42+00:00",
+    "span_seconds": 37082.0,
+    "missing": 0,
+    "duplicate": 0,
+    "backwards": 0,
+    "interval_min": 29.0,
+    "interval_median": 30.0,
+    "interval_max": 31.0,
+    "gaps_over_90s": []
+  },
+  "latency_seconds": {
+    "min": 0.764591,
+    "median": 2.5471880000000002,
+    "max": 16.27365,
+    "negative": 0
+  },
+  "sensors": {
+    "soil_pct": {
+      "min": 37.66319,
+      "max": 51.7624,
+      "mean": 40.55502685621446,
+      "missing": 6,
+      "outside_range": 0,
+      "zero": 0,
+      "saturated4095": 0
+    },
+    "soil_raw": {
+      "min": "0",
+      "max": "1934",
+      "mean": 1880.5311236863379,
+      "missing": 0,
+      "outside_range": 0,
+      "zero": 6,
+      "saturated4095": 0
+    },
+    "temperature_c": {
+      "min": 31.9,
+      "max": 33.8,
+      "mean": 32.69927243330638,
+      "missing": 0,
+      "outside_range": 0,
+      "zero": 0,
+      "saturated4095": 0
+    },
+    "humidity_pct": {
+      "min": 52.1,
+      "max": 69.7,
+      "mean": 64.56313662085692,
+      "missing": 0,
+      "outside_range": 0,
+      "zero": 0,
+      "saturated4095": 0
+    },
+    "light_raw": {
+      "min": "1716",
+      "max": "3867",
+      "mean": 3367.577202910267,
+      "missing": 0,
+      "outside_range": 0,
+      "zero": 0,
+      "saturated4095": 0
+    }
+  },
+  "flags": {
+    "soil_valid": {
+      "true": 1231,
+      "false": 6
+    },
+    "air_valid": {
+      "true": 1237
+    },
+    "pump_running": {
+      "false": 1237
+    },
+    "mode": {
+      "OFF": 1237
+    },
+    "clock_fault": {
+      "false": 1237
+    },
+    "storage_fault": {
+      "false": 1237
+    },
+    "queued_events": {
+      "0": 1237
+    },
+    "telemetry_overwrites": {
+      "13": 1237
+    }
+  },
+  "overlapping_pump_events": [],
+  "last_prior_pump_event": {
+    "event_id": 68,
+    "start": "2026-11-20 07:11:38+00:00",
+    "end": "2026-11-20 07:11:39.001000+00:00",
+    "source": "MANUAL",
+    "reason": "Duration"
+  },
+  "commands_in_session": [],
+  "soil_jumps_ge20pp": 0,
+  "sequence_gaps": {
+    "010a0d34c4adaaa9": 0
+  },
+  "minute_quality": {
+    "input_rows": 1237,
+    "rows_without_selected_time": 0,
+    "output_minutes": 618,
+    "excluded_minutes": 618,
+    "exclusions": {
+      "outside_journal_coverage": 1,
+      "unknown_previous_watering": 618
+    },
+    "time_basis": "device_timestamp",
+    "as_of": "2026-11-20T18:11:59+00:00",
+    "time_proxy": false,
+    "data_origin": "real",
+    "feature_version": "v2-watering-events",
+    "automatic_irrigation_approved": false,
+    "note": "Closed-minute aggregates. Proxy timestamps remain labelled; no pump duration inferred from hand watering."
+  },
+  "windows": {
+    "30": {
+      "input_rows": 618,
+      "grid_minutes": 618,
+      "usable_windows": 0,
+      "missing_minutes": 0,
+      "watering_counter_increments": 0,
+      "device_id": "garden-01",
+      "calibration_id": "soil-2511-979",
+      "data_origin": "real",
+      "time_basis": "device_timestamp",
+      "scope": "Only complete dry history and futures with no additional watering",
+      "v2_windows": 0,
+      "common_windows": 0,
+      "excluded_for_light": 0,
+      "exclude_saturated": false
+    },
+    "60": {
+      "input_rows": 618,
+      "grid_minutes": 618,
+      "usable_windows": 0,
+      "missing_minutes": 0,
+      "watering_counter_increments": 0,
+      "device_id": "garden-01",
+      "calibration_id": "soil-2511-979",
+      "data_origin": "real",
+      "time_basis": "device_timestamp",
+      "scope": "Only complete dry history and futures with no additional watering",
+      "v2_windows": 0,
+      "common_windows": 0,
+      "excluded_for_light": 0,
+      "exclude_saturated": false
+    }
+  },
+  "revision_latest_matches": true,
+  "user_confirmation": "User confirms pump tests did not water plant, and no plant watering occurred during W06 because moisture remained high. Exact last plant watering before W06 remains unknown. Original DB journal unchanged.",
+  "invalid_soil_samples": [
+    {
+      "measured_at": "2026-11-20 16:55:12+00:00",
+      "sample_seq": 1229,
+      "soil_raw": 0,
+      "soil_pct": null,
+      "soil_valid": false
+    },
+    {
+      "measured_at": "2026-11-20 16:55:42+00:00",
+      "sample_seq": 1230,
+      "soil_raw": 0,
+      "soil_pct": null,
+      "soil_valid": false
+    },
+    {
+      "measured_at": "2026-11-20 16:56:12+00:00",
+      "sample_seq": 1231,
+      "soil_raw": 0,
+      "soil_pct": null,
+      "soil_valid": false
+    },
+    {
+      "measured_at": "2026-11-20 16:56:42+00:00",
+      "sample_seq": 1232,
+      "soil_raw": 0,
+      "soil_pct": null,
+      "soil_valid": false
+    },
+    {
+      "measured_at": "2026-11-20 16:57:12+00:00",
+      "sample_seq": 1233,
+      "soil_raw": 0,
+      "soil_pct": null,
+      "soil_valid": false
+    },
+    {
+      "measured_at": "2026-11-20 16:57:42+00:00",
+      "sample_seq": 1234,
+      "soil_raw": 0,
+      "soil_pct": null,
+      "soil_valid": false
+    }
+  ],
+  "latest_device": {
+    "received_at": "2026-11-20 18:12:14.649365+00:00",
+    "calibration_id": "soil-2511-979",
+    "mode": "OFF",
+    "pump_running": false
+  },
+  "sensor_only_candidate_windows_NOT_AI_ELIGIBLE": {
+    "30": 524,
+    "60": 466
+  },
+  "comparison": {
+    "w05": {
+      "soil_pct": {
+        "min": 3.328982,
+        "max": 11.29243
+      },
+      "temperature_c": {
+        "min": 30.4,
+        "max": 32.0
+      },
+      "humidity_pct": {
+        "min": 69.2,
+        "max": 74.6
+      },
+      "light_raw": {
+        "min": 581.0,
+        "max": 4095.0
+      }
+    },
+    "W01": {
+      "soil_pct": {
+        "min": 0.979112,
+        "max": 26.10966
+      },
+      "temperature_c": {
+        "min": 30.9,
+        "max": 32.7
+      },
+      "humidity_pct": {
+        "min": 62.4,
+        "max": 68.4
+      },
+      "light_raw": {
+        "min": 2074.0,
+        "max": 4095.0
+      }
+    },
+    "W02": {
+      "soil_pct": {
+        "min": 0.0,
+        "max": 6.853786
+      },
+      "temperature_c": {
+        "min": 30.4,
+        "max": 32.6
+      },
+      "humidity_pct": {
+        "min": 64.6,
+        "max": 71.2
+      },
+      "light_raw": {
+        "min": 1305.0,
+        "max": 4095.0
+      }
+    },
+    "W03": {
+      "soil_pct": {
+        "min": 2.480418,
+        "max": 6.201045
+      },
+      "temperature_c": {
+        "min": 31.7,
+        "max": 32.6
+      },
+      "humidity_pct": {
+        "min": 65.2,
+        "max": 71.7
+      },
+      "light_raw": {
+        "min": 871.0,
+        "max": 4095.0
+      }
+    },
+    "W04": {
+      "soil_pct": {
+        "min": 0.0,
+        "max": 23.04177
+      },
+      "temperature_c": {
+        "min": 31.2,
+        "max": 33.2
+      },
+      "humidity_pct": {
+        "min": 61.7,
+        "max": 75.2
+      },
+      "light_raw": {
+        "min": 756.0,
+        "max": 4095.0
+      }
+    }
+  }
+}

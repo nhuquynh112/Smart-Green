@@ -25,3 +25,5 @@ echo 'profiles: telemetry-only and control pump-lock assertions passed'
 g++ -std=c++17 -Wall -Wextra -Werror -Ifirmware/include -I"$json_dir" firmware/test/native/test_telemetry_time.cpp -o "$test_dir/time"
 "$test_dir/time"
 echo 'telemetry: timestamp key, UTC text and clock invalidation passed'
+g++ -std=c++17 -Wall -Wextra -Werror -Ifirmware/include firmware/test/native/test_float_telemetry.cpp -o "$test_dir/float"
+"$test_dir/float"

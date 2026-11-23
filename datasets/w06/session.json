@@ -1,0 +1,16 @@
+{
+  "session_id": "15802fb9a287239d0378191115df91b5",
+  "device_id": "garden-01",
+  "revision": 4,
+  "active": 0,
+  "calibration_id": "soil-2511-979",
+  "end": "2026-11-20T18:11:59+00:00",
+  "events": [],
+  "history_complete": true,
+  "last_watered_at_before_start": null,
+  "name": "W-20261120-075322-1580",
+  "notes": "",
+  "observations": [],
+  "start": "2026-11-20T07:53:22+00:00",
+  "unknown_intervals": []
+}

@@ -1,0 +1,18 @@
+{
+  "date": "2026-11-21",
+  "status": "SOURCE_APPLIED",
+  "authorization": "User confirmed collection finished and requested integration",
+  "source_after_hashes_verified": true,
+  "backend_restarted": false,
+  "firmware_uploaded": false,
+  "operational_database_modified": false,
+  "tests": {
+    "python_pass": 199,
+    "python_skip": 8,
+    "subtests_pass": 8,
+    "dashboard_pass": 30,
+    "auto_native_pass": 36,
+    "firmware_native": "PASS",
+    "esp32dev_local_build": "SUCCESS"
+  }
+}

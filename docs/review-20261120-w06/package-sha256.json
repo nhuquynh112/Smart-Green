@@ -1,0 +1,21 @@
+{
+  "README.md": "c009d71ce64701385a71e682d6a718324c846e641c95d613daba39fb90bd5bee",
+  "USER_IMPROVEMENT_HANDOFF.md": "8d8910930a998e0040a2ebad73132eede41ad23f9d4ead526e6cd3a675eae0d4",
+  "USER_TEST_JOURNAL.md": "639a906f9902a284883461bbd6a13132feff22f38616ef6887c3dda92cca3c32",
+  "apply_after_collection.py": "77793e14fad347ef3d0ebcb9def5dc0ff145c4d3c8dc1c42fc16339ae87d7b45",
+  "changes.patch": "e56840db047cf3430737c57e41dd3ab40dda0ee94a61a154f00d9785d6b37443",
+  "deployment.json": "6f86296e8f207b41341229bc19f4d22b04e804e4d21e7aa31789337f3c5a73bb",
+  "evidence/applied-auto.txt": "b973501c664867c8fa3b7c0a7663317d38ee17ca0027ede167da96d733c3dbe7",
+  "evidence/applied-build.txt": "b8f77f16ee2aab0c22586b2dbc13fb4c09947ca5eb0dd4de31b87da490be6c40",
+  "evidence/applied-dashboard.txt": "6565a947cfabba87fa22c54e8d37f8dc023a6d757e95d1d6f271303cb01ac3e9",
+  "evidence/applied-firmware.txt": "b7781bf4751f15e2a00a56affcba6e67b45329ca0ff06bceb081d5d0f5658a08",
+  "evidence/applied-pytest.txt": "f7ed3c59e0ecfeb0e72fb50a5fc5996bd3ad3fbc2a0cc31aed27382d19ef2ff8",
+  "evidence/auto.txt": "b973501c664867c8fa3b7c0a7663317d38ee17ca0027ede167da96d733c3dbe7",
+  "evidence/build.txt": "4f9809d68e80c28492731e89473a4603d6f973220b1b230bbb3b690108f95ca6",
+  "evidence/control-limits-final.txt": "b4a6987188b15da7f405a5418d6679fd27377837a722e852f6a1fb74502469a2",
+  "evidence/dashboard.txt": "289567a7815289e0e7ab5663549c090e2b0f90e4d83fc988fea7b87f4438e4c8",
+  "evidence/firmware.txt": "b7781bf4751f15e2a00a56affcba6e67b45329ca0ff06bceb081d5d0f5658a08",
+  "evidence/pytest.txt": "9b855edf7eb1199d86aa6169a5136a7b44f4be1c665ebcbede53dfd05368271d",
+  "evidence/pytest.xml": "371f9a1776025a48b1792eeb5f0b4f0a74c1ab25784f453c39fcd19595e1331f",
+  "source-manifest.json": "3e05feaa7fe20caebd9b48adc71bf5ec55c3f9c96fd158970bb3930fabef760a"
+}

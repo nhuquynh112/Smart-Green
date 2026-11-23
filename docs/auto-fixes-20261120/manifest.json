@@ -1,0 +1,34 @@
+{
+  "date": "2026-11-20",
+  "scope": "AUTO fixes, host simulations and compile only",
+  "hardware_access": false,
+  "firmware_uploaded": false,
+  "build": {
+    "environment": "esp32dev",
+    "result": "SUCCESS",
+    "ram_bytes": 47628,
+    "flash_bytes": 961857
+  },
+  "checks": {
+    "native_auto_pass": 36,
+    "python_pass": 186,
+    "python_skip": 8,
+    "python_subtests_pass": 8
+  },
+  "sha256": {
+    "docs/AUTO_FIXES_AND_ACCEPTANCE_2026-11-20.md": "a4c0dcfea203e8ee9ee66c0ea44ed6058119171e1a297422421dcaf5603209d5",
+    "docs/auto-fixes-20261120/dashboard-results.txt": "52a8ee2f262f7cd220b18ed609147f21649651434c861ca1c6c9c0c68b70e52a",
+    "docs/auto-fixes-20261120/firmware-results.txt": "b7781bf4751f15e2a00a56affcba6e67b45329ca0ff06bceb081d5d0f5658a08",
+    "docs/auto-fixes-20261120/native-results.txt": "b973501c664867c8fa3b7c0a7663317d38ee17ca0027ede167da96d733c3dbe7",
+    "docs/auto-fixes-20261120/pytest-results.txt": "15ef67255643f5d39f0d36c0e1c588f623d3debd1b62f033a6c4621f94f05c65",
+    "docs/auto-fixes-20261120/pytest-results.xml": "e46d2b7848a6e4f0797cd880d1a892db2b85b97a21c0e86f8a875e0d6dc15e9c",
+    "firmware/include/command_delivery.h": "e3e318333af7d91e3b81e7fbfc6c4412ec6469690830c8ef0f7049f223df6b79",
+    "firmware/include/controller.h": "3b0b26c6a3b2ed4fb388a9423393127aa47bf0fb5f124b2da0481d8be48db3ea",
+    "firmware/include/network_worker.h": "de8c22ce68050c41bd5f5155a9ce30796d5e5b6135619ae7ba30fe54973e5734",
+    "firmware/src/main.cpp": "dc74e7c482db4a05c9d336af68eb7253b36595121001c87004ae80f7c91f1e56",
+    "firmware/test/native/runtime_bridge.cpp": "f3f9226c5b142ef7214375afd1e9114ab355ecb7c9367e39a88e87951f8bd9e9",
+    "firmware/test/native/test_auto_audit.cpp": "147ba2508293682128158f4f5116210259a10d2602f06b20a83ec9dbcdb0be1d",
+    "integration/test_auto_backend.py": "e1635e81353db1a159b5f5aa2c867670e218066a9aa63be8d199b11aaab991b0",
+    "tools/test_auto_audit.sh": "d145283eafadfdbc9f07d9000180f16fa8de9432c46f2794b6717c32a5d6f1af"
+  }
+}

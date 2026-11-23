@@ -1,0 +1,10 @@
+[
+  {
+    "confirmed_on": "2026-11-21",
+    "session": "W06",
+    "statement": "Người dùng xác nhận không tưới cây trong phiên W06 vì độ ẩm vẫn còn cao.",
+    "scope": "No plant watering during W06 only; does not establish last watering before session.",
+    "source": "Direct user message",
+    "last_watered_at_before_start": null
+  }
+]

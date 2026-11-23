@@ -1,0 +1,10 @@
+{
+  "date": "2026-11-23",
+  "source": "PostgreSQL configured runtime DATABASE_URL (credentials omitted)",
+  "isolation": "REPEATABLE READ READ ONLY",
+  "selection": "garden-01 real received_at >= saved start and < saved end",
+  "raw_modified": false,
+  "training_performed": false,
+  "can_trigger_pump": false,
+  "latest_revision_matches": true
+}
